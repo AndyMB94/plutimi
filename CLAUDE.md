@@ -42,7 +42,7 @@ plutimi/
 - Documentación en español.
 
 **Arquitectura**
-- Monolito modular por funcionalidad: `shared`, `auth`, `user`, `catalog`, `cart`, `order`, `payment`, `checkout`, `pet`, `medicalrecord`, `appointment`, `notification`.
+- Monolito modular por funcionalidad: `shared`, `auth`, `user`, `species`, `catalog`, `cart`, `order`, `payment`, `checkout`, `pet`, `medicalrecord`, `appointment`, `notification`.
 - Cada módulo: entity, repository (package-private), service, controller, mapper y `dto/`. Lo transversal en `shared` (config, exception, persistence, security, money, web).
 - Entre módulos: solo a través del service del otro módulo; relaciones por ID, no por asociación JPA; efectos secundarios con eventos de Spring.
 - Servicios externos (pagos, correo) en clases client/gateway propias.
@@ -57,7 +57,9 @@ plutimi/
 **Base de datos**
 - Database first: primero la migración Flyway y después la entidad. `ddl-auto=validate`.
 - Migraciones `V<n>__<verb>_<object>.sql` (ej. `V1__create_categories_table.sql`). Nunca modificar una migración ya aplicada.
-- Tablas en plural y `snake_case`; `BIGINT IDENTITY`; `TIMESTAMPTZ` ↔ `Instant`; enums como `VARCHAR` + `@Enumerated(STRING)`.
+- Tablas en plural y `snake_case`; `BIGINT IDENTITY`; `TIMESTAMPTZ` ↔ `Instant`. Tablas de unión N:M con PK compuesta.
+- Enum (`VARCHAR` + `@Enumerated(STRING)`) solo si cada valor tiene comportamiento en el código (estados, Strategy); si son datos gestionables, tabla de referencia.
+- Seeders: datos de referencia en migraciones `V<n>__insert_...` (todos los entornos); datos demo en migraciones repetibles e idempotentes `db/demo/R__demo_<nn>_<tema>.sql` (solo perfil `dev`).
 
 **API REST**
 - `/api/v1/<recurso-en-plural>` en kebab-case. Acciones de negocio: `POST /api/v1/orders/{id}/cancel`.
@@ -71,7 +73,9 @@ plutimi/
 - Los services lanzan; los controllers no usan try/catch. Los 500 no exponen detalles y se registran en el log.
 
 **Seguridad**
-- Spring Security con JWT: access token de 15 min + refresh token rotativo (cookie HttpOnly, guardado hasheado). Roles `CUSTOMER`, `VET`, `ADMIN`.
+- Spring Security con JWT: access token de 15 min + refresh token rotativo (cookie HttpOnly, guardado hasheado).
+- RBAC en base de datos: `roles`, `permissions`, `role_permissions`; un rol por usuario (`users.role_id`). Roles base `CUSTOMER`, `VET`, `ADMIN`.
+- Los endpoints comprueban permisos con `@PreAuthorize("hasAuthority('<recurso>:<acción>')")`, nunca `hasRole`. La propiedad ("lo mío") la aplica el service; los permisos `*:read-all` amplían el alcance.
 - JWT solo dentro del módulo `auth`. El resto usa `CurrentUserProvider` / `AuthenticatedUser` de `shared/security`.
 
 **Principios**

@@ -92,19 +92,20 @@ backend/src/main/java/dev/andymallcco/plutimi/
 │   ├── config/          # Configuración transversal: OpenAPI, CORS, JPA auditing, Clock
 │   ├── exception/       # GlobalExceptionHandler y excepciones base
 │   ├── persistence/     # AuditableEntity (created_at / updated_at)
-│   ├── security/        # CurrentUserProvider, AuthenticatedUser, Role (abstracciones)
+│   ├── security/        # CurrentUserProvider, AuthenticatedUser (abstracciones)
 │   ├── money/           # Money (Value Object)
 │   └── web/             # PageResponse y utilidades HTTP
 ├── auth/                # Registro, login, tokens, configuración de Spring Security
-├── user/                # Usuarios y perfiles
-├── catalog/             # Categorías y productos
+├── user/                # Usuarios, roles y permisos (RBAC)
+├── species/             # Especies y razas (datos de referencia compartidos)
+├── catalog/             # Categorías, marcas y productos
 ├── cart/                # Carrito
 ├── order/               # Pedidos
 ├── payment/             # Pagos y pasarelas (Strategy)
 ├── checkout/            # Orquestación de la compra (Facade)
 ├── pet/                 # Mascotas
-├── medicalrecord/       # Historial clínico y vacunas
-├── appointment/         # Citas veterinarias
+├── medicalrecord/       # Historial clínico, catálogo de vacunas y vacunas aplicadas
+├── appointment/         # Tipos de cita y citas veterinarias
 └── notification/        # Correo, notificaciones y listeners de eventos
 ```
 
@@ -216,9 +217,12 @@ enredado:
 1. **Un módulo solo usa a otro a través de su service.** Los repositorios son
    *package-private*, así que el compilador impide que `order` use `ProductRepository`.
 2. **Relaciones entre módulos por ID, no por asociación JPA.** Dentro de un módulo sí se
-   usan `@ManyToOne`/`@OneToMany` (por ejemplo `Product → Category`, o `Order → OrderItem`).
-   Entre módulos se guarda el ID (`OrderItem.productId`, `Pet.ownerId`). La integridad la
-   garantiza igualmente la *foreign key* en PostgreSQL.
+   usan `@ManyToOne`/`@OneToMany`/`@ManyToMany` (por ejemplo `Product → Category`,
+   `Order → OrderItem` o `Role ↔ Permission`). Entre módulos se guarda el ID
+   (`OrderItem.productId`, `Pet.ownerId`). Una relación N:M con otro módulo se mapea como
+   una colección de IDs: `Product.speciesIds` es un `Set<Long>` con `@ElementCollection`
+   sobre la tabla `product_species`. La integridad la garantiza igualmente la *foreign key*
+   en PostgreSQL.
 3. **`shared` no depende de ningún módulo.** Todos los módulos pueden depender de `shared`.
 4. **Sin ciclos.** Si dos módulos se necesitan mutuamente, uno de los sentidos se resuelve
    con un **evento** (patrón Observer).
@@ -233,7 +237,9 @@ flowchart LR
     checkout --> cart & order & payment & catalog
     cart --> catalog
     order --> catalog
+    catalog --> species
     auth --> user
+    pet --> species
     appointment --> pet & user
     medicalrecord --> pet
     notification -. escucha eventos .-> order & appointment & medicalrecord
@@ -300,11 +306,19 @@ Prohibido: la palabra **`model`** en clases y paquetes, y el sufijo `Impl` por d
 | Tabla | plural, `snake_case` | `products`, `order_items` |
 | Columna | `snake_case` | `created_at`, `price_amount` |
 | PK | `id` | `id BIGINT GENERATED ALWAYS AS IDENTITY` |
+| Tabla de unión N:M | `<tabla_a>_<tabla_b>` sin `id`, PK compuesta | `role_permissions`, `product_species` |
+| PK compuesta | `pk_<tabla>` | `pk_role_permissions` |
 | FK | `<entidad>_id` | `category_id` |
 | Índice | `idx_<tabla>_<columnas>` | `idx_products_category_id` |
 | Único | `uk_<tabla>_<columnas>` | `uk_users_email` |
 | FK constraint | `fk_<tabla>_<referencia>` | `fk_products_categories` |
 | Check | `ck_<tabla>_<regla>` | `ck_products_stock_non_negative` |
+| Exclusión | `ex_<tabla>_<regla>` | `ex_appointments_vet_period` |
+
+### Permisos
+
+`<recurso>:<acción>` en minúsculas y *kebab-case*: `catalog:manage`, `medical-record:write`,
+`order:read-all`. El catálogo completo está en [PLAN.md §3](PLAN.md#3-roles-y-permisos).
 
 Hibernate traduce `createdAt` a `created_at` automáticamente (estrategia de nombres por
 defecto de Spring Boot), así que normalmente no hace falta `@Column(name = ...)`.
@@ -315,13 +329,16 @@ defecto de Spring Boot), así que normalmente no hace falta `@Column(name = ...)
 
 ```
 V1__create_categories_table.sql
-V2__create_products_table.sql
-V3__create_users_table.sql
-V4__add_brand_to_products.sql
+V2__create_species_and_breeds_tables.sql
+V3__insert_species_and_breeds.sql
+V<n>__add_weight_to_products.sql   # ejemplo de un cambio posterior
 ```
 
 - **Una migración aplicada nunca se modifica.** Para corregirla se crea una nueva.
 - Una migración = un cambio coherente.
+- Los datos de referencia van en migraciones `insert_...` separadas de las que crean tablas.
+- Los datos de demostración son migraciones **repetibles**: `R__demo_<nn>_<tema>.sql` en
+  `db/demo` (ver [sección 7](#datos-iniciales-seeders)).
 
 ---
 
@@ -356,10 +373,126 @@ Decisiones de modelado:
 | Dinero | `NUMERIC(12,2)` ↔ `BigDecimal`, envuelto en `Money` | Nunca `double`: los decimales binarios no representan exactamente 0.10. |
 | Moneda | Columna `CHAR(3)` (ISO 4217); por ahora siempre `PEN` | El Value Object queda completo y no habrá que migrar si se añade otra moneda. |
 | Enums | `VARCHAR` + `CHECK` ↔ `@Enumerated(EnumType.STRING)` | Legibles en la base de datos; reordenar el enum no corrompe datos (`ORDINAL` sí). |
-| Auditoría | `created_at` / `updated_at` mediante `AuditableEntity` (`@MappedSuperclass`) y JPA Auditing | Evita repetir esos campos en cada entidad. |
-| Concurrencia | `@Version` (columna `version`) en `Product`, `Order` y `Appointment` | Bloqueo optimista: dos compras simultáneas del último producto no pueden dejar el stock negativo. |
+| Auditoría | `created_at` / `updated_at` mediante `AuditableEntity` (`@MappedSuperclass`) y JPA Auditing. En SQL: `TIMESTAMPTZ NOT NULL DEFAULT now()` | Evita repetir esos campos en cada entidad. El `DEFAULT` cubre los `INSERT` que no pasan por JPA (seeders). |
+| Concurrencia | `@Version` (columna `version`) en `Product`, `Order` y `Appointment`; restricción de exclusión en `appointments` | Bloqueo optimista: dos compras simultáneas del último producto no pueden dejar el stock negativo. La exclusión impide citas solapadas (ver más abajo). |
 | Borrado | *Soft delete* (`active = false`) para categorías, productos y mascotas | Los pedidos e historiales los referencian; borrarlos físicamente rompería el histórico. |
-| Snapshot | `order_items` copia el nombre y el precio unitario del producto | El precio de un pedido pasado no debe cambiar si cambia el catálogo. |
+| Snapshot | `order_items` copia el nombre y el precio unitario del producto; `appointments.ends_at` copia la duración del tipo de cita | El pasado no debe cambiar si cambia el catálogo o la configuración. |
+| Integridad compleja | FK compuesta (raza ↔ especie) y restricción de exclusión (citas solapadas) | Lo que la base de datos puede garantizar no se deja solo al código: resiste concurrencia y errores de programación. |
+
+### Enum o tabla de referencia
+
+| Usar un **enum** (`VARCHAR` + `CHECK` ↔ `@Enumerated(STRING)`) cuando... | Usar una **tabla de referencia** cuando... |
+|---|---|
+| Cada valor implica **comportamiento en el código** (transiciones, una Strategy) | Los valores son **datos**: el código no tiene un `if` por cada uno |
+| Añadir un valor exige desplegar código nuevo de todas formas | Un admin podría querer añadir valores sin desplegar |
+| `OrderStatus`, `AppointmentStatus`, `PaymentProvider`, `PetSex` | Roles, permisos, especies, razas, marcas, vacunas, tipos de cita |
+
+Las tablas de referencia con un `code` estable (`species.code = 'DOG'`, `roles.code = 'ADMIN'`)
+permiten que el código o los seeders se refieran a una fila concreta sin depender de su
+`id`, que puede variar entre entornos.
+
+### FK compuesta: la raza pertenece a la especie
+
+`pets` guarda `species_id` y `breed_id`. Para que la base de datos impida un gato de raza
+"Labrador":
+
+```sql
+-- breeds
+CONSTRAINT uk_breeds_id_species UNIQUE (id, species_id)
+-- pets
+CONSTRAINT fk_pets_breeds FOREIGN KEY (breed_id, species_id) REFERENCES breeds (id, species_id)
+```
+
+La FK exige que exista una raza con **ese id y esa especie a la vez**. Con `breed_id NULL`
+la FK no se evalúa, así que la raza sigue siendo opcional. El service valida lo mismo antes
+para devolver un mensaje claro; la FK es la red de seguridad.
+
+### Citas: grilla de turnos y doble reserva
+
+**Grilla fija.** La agenda se divide en turnos base de 30 minutos (configurable con
+`plutimi.appointments.slot-minutes`). Cada tipo de cita dura un múltiplo del turno base:
+una consulta ocupa 1 turno y un baño y corte de 60 minutos ocupa 2 turnos consecutivos.
+Las citas empiezan siempre en el borde de un turno.
+
+Reglas en la base de datos:
+
+```sql
+-- appointment_types
+CONSTRAINT ck_appointment_types_duration CHECK (duration_minutes > 0 AND duration_minutes % 30 = 0)
+-- appointments
+CONSTRAINT ck_appointments_aligned CHECK (
+    EXTRACT(EPOCH FROM scheduled_at)::BIGINT % 1800 = 0 AND
+    EXTRACT(EPOCH FROM ends_at)::BIGINT % 1800 = 0 AND
+    ends_at > scheduled_at)
+```
+
+El `30` de la base de datos y el `slot-minutes` de la aplicación deben coincidir. Por eso
+la aplicación comprueba **al arrancar** que todos los tipos activos son múltiplos del turno
+configurado y, si no, no arranca (*fail fast*). Cambiar el turno base implica cambiar la
+propiedad **y** escribir una migración que actualice los `CHECK`.
+
+**Cálculo de disponibilidad** (`GET /appointments/availability?vetId&date&appointmentTypeId`):
+
+1. Se genera la grilla del día con el horario de atención: 09:00, 09:30, 10:00...
+2. Se marcan como ocupados los turnos cubiertos por citas activas (`REQUESTED` o
+   `CONFIRMED`) del veterinario: una cita de 10:00 a 11:00 ocupa los turnos de 10:00 y 10:30.
+3. Para un tipo que necesita `k = duración / turno base` turnos, una hora de inicio es
+   válida si los `k` turnos consecutivos están libres y dentro del horario de atención.
+4. Se devuelven esas horas de inicio, excluyendo las que ya pasaron.
+
+```
+Turnos:     09:00  09:30  10:00  10:30  11:00  11:30
+Ocupado:      -      -     [ cita 60' ]    -      -
+Tipo 30':   09:00  09:30                11:00  11:30   → 4 inicios posibles
+Tipo 60':   09:00                       11:00          → 09:30 no (pisaría 10:00)
+```
+
+**Protección contra doble reserva.** Con duraciones distintas, un índice único sobre
+`(vet_id, scheduled_at)` ya no basta: una cita de 60' a las 10:00 y otra de 30' a las 10:30
+empiezan a horas distintas pero se solapan. Se usa una **restricción de exclusión** de
+PostgreSQL (necesita la extensión `btree_gist`):
+
+```sql
+CONSTRAINT ex_appointments_vet_period EXCLUDE USING gist (
+    vet_id WITH =,
+    tstzrange(scheduled_at, ends_at) WITH &&
+) WHERE (status IN ('REQUESTED', 'CONFIRMED'))
+```
+
+- Significa que no puede haber dos filas con el mismo `vet_id` y rangos solapados (`&&`),
+  contando solo las citas activas: cancelar libera el horario.
+- El rango `[inicio, fin)` es semiabierto, así que las citas **contiguas** (10:00–11:00 y
+  11:00–11:30) están permitidas.
+- **Carrera:** si dos clientes ven libre el mismo horario y reservan a la vez, ambos pasan la
+  validación del service, pero PostgreSQL rechaza el segundo `INSERT` (SQLState `23P01`,
+  `exclusion_violation`). El service lo traduce a `SlotUnavailableException` (409). La
+  disponibilidad que muestra la API es orientativa; la garantía la da la base de datos.
+
+### Datos iniciales (seeders)
+
+| Nivel | Qué | Cómo | Dónde se ejecuta |
+|---|---|---|---|
+| **Referencia** | Roles, permisos, especies, razas, vacunas, tipos de cita | Migraciones versionadas `V<n>__insert_...sql` en `db/migration` | Todos los entornos |
+| **Demostración** | Usuarios de prueba de cada rol, marcas, categorías, productos y mascotas | Migraciones repetibles `R__demo_<nn>_<tema>.sql` en `db/demo` | Solo `dev` |
+| **Admin de producción** | Primer usuario `ADMIN` | `AdminInitializer` (`ApplicationRunner`) con `ADMIN_EMAIL` y `ADMIN_PASSWORD` | Si no existe ningún admin |
+
+- **Referencia**: el código depende de estos datos (por ejemplo, el registro busca el rol
+  `CUSTOMER`), así que deben existir en todos los entornos, versionados con el esquema.
+- **Demostración**: `application-dev.properties` añade la ubicación con
+  `spring.flyway.locations=classpath:db/migration,classpath:db/demo`. En `prod` y `test`
+  esa carpeta no se lee.
+- **Por qué repetibles (`R__`) y no versionadas:** Flyway ejecuta las repetibles después
+  de todas las versionadas y las vuelve a ejecutar cuando cambia su contenido. Si fueran
+  versionadas con números altos (por ejemplo `V1000__demo`), al añadir después `V10__...`
+  Flyway detectaría una migración nueva con número menor que una ya aplicada y fallaría la
+  validación.
+- **Idempotencia:** como pueden ejecutarse varias veces, usan
+  `INSERT ... ON CONFLICT (<clave natural>) DO NOTHING` (por `email`, `sku`, `slug`...) y
+  buscan las FK por código (`SELECT id FROM roles WHERE code = 'VET'`), nunca por `id` fijo.
+- Los tests usan el perfil `test`, sin datos demo: cada test prepara sus propios datos.
+
+> **Desde Django:** los datos de referencia equivalen a una *data migration* (`RunPython`),
+> y los de demostración a un `loaddata demo.json` que solo ejecutas en local.
 
 ---
 
@@ -611,7 +744,8 @@ Detalles técnicos:
   Nimbus). No hace falta una librería externa como `jjwt`, y Spring Security valida
   firma, expiración y *claims* automáticamente.
 - Las contraseñas se guardan con **BCrypt** (`PasswordEncoder`).
-- *Claims* del access token: `sub` (id del usuario), `email`, `role`, `iat`, `exp`.
+- *Claims* del access token: `sub` (id del usuario), `email`, `role` (código del rol),
+  `permissions` (lista de códigos de permiso), `iat` y `exp`.
 
 ### Aislamiento: cómo se puede cambiar sin tocar el resto
 
@@ -624,7 +758,7 @@ flowchart TB
     end
     subgraph shared [shared/security: abstracción]
         CUP[[CurrentUserProvider]]
-        AU[AuthenticatedUser<br/>id, email, role]
+        AU[AuthenticatedUser<br/>id, email, role, permissions]
     end
     subgraph negocio [módulos de negocio]
         O[OrderService]
@@ -638,9 +772,10 @@ flowchart TB
 
 1. El módulo `auth` es el **único** que sabe que existe JWT.
 2. Tras validar el token, `auth` coloca en el `SecurityContext` de Spring un principal
-   propio, `AuthenticatedUser(id, email, role)`, que es independiente del mecanismo.
+   propio, `AuthenticatedUser(id, email, role, permissions)`, que es independiente del
+   mecanismo.
 3. Los demás módulos solo conocen la interfaz `CurrentUserProvider` (en `shared/security`),
-   con métodos como `currentUser()` y `currentUserId()`.
+   con métodos como `currentUser()`, `currentUserId()` y `hasPermission(code)`.
 4. Para añadir **Google**, el login OAuth2 también terminará produciendo un
    `AuthenticatedUser` (y emitiendo los mismos tokens). `OrderService` y `PetService` no
    cambian.
@@ -650,18 +785,133 @@ Esta interfaz es una **excepción consciente** a la regla "interfaces solo con v
 implementaciones": es una frontera de arquitectura (un *puerto*) y además tiene una segunda
 implementación real en los tests.
 
-### Autorización (roles)
+### Autorización: RBAC con permisos
 
-- Roles: `CUSTOMER` (por defecto al registrarse), `VET` y `ADMIN`. **Un rol por usuario**.
-- `SecurityConfig` define lo público (GET del catálogo, `/auth/**`, Swagger en dev) y exige
-  autenticación para el resto.
-- Las reglas por rol se declaran en el controller con `@PreAuthorize("hasRole('ADMIN')")`.
-  Esta anotación habla de **roles**, no de JWT, así que no rompe el aislamiento.
-- Las reglas de **propiedad** ("solo puedes ver tus pedidos") las aplica el service usando
-  `CurrentUserProvider`.
+**RBAC** (*Role-Based Access Control*) normalizado en la base de datos:
 
-> **Desde Django:** `CurrentUserProvider` ≈ `request.user`, pero inyectado como dependencia
-> en vez de viajar en la request. `@PreAuthorize` ≈ las *permission classes* de DRF.
+```mermaid
+erDiagram
+    users }o--|| roles : "role_id"
+    roles ||--o{ role_permissions : ""
+    permissions ||--o{ role_permissions : ""
+```
+
+- Cada usuario tiene **un rol** (`users.role_id`). Cada rol agrupa **N permisos**
+  (`role_permissions`, N:M con PK compuesta).
+- Roles base: `CUSTOMER` (asignado al registrarse), `VET` y `ADMIN`, marcados como `system`.
+  El admin puede crear roles nuevos con cualquier combinación de permisos.
+- El rol `ADMIN` nunca pierde `role:manage` ni `user:manage` (409 si se intenta quitárselos):
+  así siempre hay alguien capaz de gestionar roles y usuarios.
+- Los permisos son de solo lectura en la API: se crean con migraciones porque cada uno
+  tiene sentido solo si hay código que lo comprueba.
+- Catálogo de permisos y asignación por rol: [PLAN.md §3](PLAN.md#3-roles-y-permisos).
+
+**Los endpoints comprueban permisos, no roles:**
+
+```java
+// Ilustrativo
+@PreAuthorize("hasAuthority('catalog:manage')")
+@PostMapping
+public ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) { ... }
+```
+
+¿Por qué permisos y no `hasRole('ADMIN')`?
+
+- **El código pregunta "¿puede hacer X?" y no "¿quién es?".** Para crear un rol
+  `STOCK_MANAGER` que solo gestione el catálogo basta con asignarle `catalog:manage` desde
+  la API. Con `hasRole('ADMIN')` habría que cambiar el código y desplegar.
+- Las reglas quedan documentadas en un solo lugar: la tabla de asignación.
+- Solo hay dos referencias a códigos de rol en el código: el registro (`CUSTOMER`) y el
+  listado de veterinarios (`VET`).
+
+**Propiedad y permisos `*:read-all`.** Que un cliente vea *sus* pedidos no es un permiso,
+es una regla de propiedad que aplica el service. Los permisos `*:read-all` amplían ese
+alcance:
+
+```java
+// Ilustrativo
+public PageResponse<OrderSummaryResponse> list(OrderFilter filter, Pageable pageable) {
+    AuthenticatedUser user = currentUserProvider.currentUser();
+    if (!user.hasPermission("order:read-all")) {
+        filter = filter.withUserId(user.id());   // solo los suyos
+    }
+    ...
+}
+```
+
+### Cómo Spring Security convierte rol y permisos en *authorities*
+
+**Concepto Spring:** para Spring Security, todo lo que un usuario "tiene" es una
+**`GrantedAuthority`**, un objeto que envuelve un simple `String`. Spring no distingue
+entre roles y permisos; la diferencia es solo una convención:
+
+| Expresión | Qué comprueba |
+|---|---|
+| `hasAuthority('catalog:manage')` | Que exista la authority con ese texto exacto |
+| `hasRole('ADMIN')` | Que exista la authority `"ROLE_ADMIN"` (añade el prefijo `ROLE_` por ti) |
+
+El recorrido completo:
+
+```mermaid
+sequenceDiagram
+    participant DB as PostgreSQL
+    participant AS as AuthService / TokenService
+    participant C as Cliente
+    participant F as BearerTokenAuthenticationFilter
+    participant D as JwtDecoder
+    participant CV as JwtAuthenticationConverter (propio)
+    participant SC as SecurityContext
+    participant M as @PreAuthorize (method security)
+    Note over AS,DB: 1. Login (o refresh)
+    AS->>DB: user → role → permissions
+    AS-->>C: JWT {sub, email, role:"ADMIN", permissions:["catalog:manage", ...]}
+    Note over C,M: 2. Cada petición
+    C->>F: Authorization: Bearer <jwt>
+    F->>D: decode(jwt)
+    D-->>F: Jwt validado (firma y expiración)
+    F->>CV: convert(jwt)
+    CV-->>F: authorities = [ROLE_ADMIN, catalog:manage, ...]<br/>principal = AuthenticatedUser
+    F->>SC: guarda la Authentication
+    M->>SC: ¿authorities contiene 'catalog:manage'?
+    M-->>M: sí → ejecuta el método · no → AccessDeniedException → 403
+```
+
+1. **Al hacer login** (y en cada refresh), `AuthService` carga el usuario con su rol y los
+   permisos del rol. `TokenService` los escribe en el JWT como *claims* `role` y
+   `permissions`.
+2. **En cada petición**, el filtro `BearerTokenAuthenticationFilter` (de OAuth2 Resource
+   Server) extrae el token de la cabecera, y el `JwtDecoder` comprueba la firma y la
+   expiración.
+3. Un **`JwtAuthenticationConverter` propio** transforma el `Jwt` en una `Authentication`:
+   - el *claim* `role` → `SimpleGrantedAuthority("ROLE_ADMIN")`;
+   - cada elemento de `permissions` → `SimpleGrantedAuthority("catalog:manage")`, sin prefijo;
+   - el principal pasa a ser nuestro `AuthenticatedUser`.
+
+   El conversor que Spring trae por defecto leería el *claim* `scope` y añadiría el prefijo
+   `SCOPE_`, por eso lo sustituimos.
+4. La `Authentication` se guarda en el `SecurityContext`, que dura lo que dura la petición.
+5. `@PreAuthorize` funciona porque Spring envuelve el controller en un **proxy** (AOP) que,
+   antes de llamar al método, evalúa la expresión contra las authorities del
+   `SecurityContext`. Si falla, lanza `AccessDeniedException`, que se convierte en un 403.
+
+**Por qué los permisos viajan en el token:** así ninguna petición consulta la base de datos
+para autorizar, que es la ventaja de usar JWT. El coste es que un cambio de permisos tarda
+en aplicarse lo que queda de vida al access token (como máximo 15 minutos): el siguiente
+refresh vuelve a leer los permisos de la base de datos. Cuando se cambia el rol de un
+usuario o se le desactiva, además se revocan sus refresh tokens, así que pierde el acceso en
+cuanto caduca su access token.
+
+**Otras piezas:**
+
+- `SecurityConfig` define lo público (GET del catálogo, especies, `/auth/**`, Swagger en
+  dev) y exige autenticación para el resto.
+- `@PreAuthorize` habla de **permisos**, no de JWT, así que no rompe el aislamiento de `auth`.
+
+> **Desde Django:** este modelo es casi idéntico al de `django.contrib.auth`: `Permission`
+> ≈ nuestros permisos (`app.add_product`), `Group` ≈ nuestros roles, y
+> `user.has_perm('catalog.manage')` ≈ `hasAuthority('catalog:manage')`. La diferencia es
+> que aquí cada usuario tiene un solo rol. `CurrentUserProvider` ≈ `request.user`, pero
+> inyectado como dependencia, y `@PreAuthorize` ≈ las *permission classes* de DRF.
 
 ---
 
@@ -780,9 +1030,15 @@ stateDiagram-v2
 ```
 src/main/resources/
 ├── application.properties        # Común: JPA, Flyway, Jackson, paginación
-├── application-dev.properties    # Local: BD en localhost:5434, logs SQL, Swagger
-└── application-prod.properties   # VPS: todo por variables de entorno, sin valores por defecto
+├── application-dev.properties    # Local: BD en localhost:5434, logs SQL, Swagger, datos demo
+├── application-prod.properties   # VPS: todo por variables de entorno, sin valores por defecto
+└── db/
+    ├── migration/                # Esquema + datos de referencia (todos los entornos)
+    └── demo/                     # Datos de demostración R__demo_*.sql (solo dev)
 ```
+
+- Los tests se ejecutan con el perfil `test` (`@ActiveProfiles("test")`): PostgreSQL propio
+  con Testcontainers y sin datos demo.
 
 - `spring.profiles.default=dev`: al ejecutar desde IntelliJ se usa `dev` sin configurar nada.
   En producción se arranca con `SPRING_PROFILES_ACTIVE=prod`.
@@ -836,6 +1092,11 @@ src/main/resources/
 | **DTO** | *Data Transfer Object*: estructura plana para **transportar datos** entre capas o por la red. Sin comportamiento ni identidad. Define el **contrato de la API**. | `record`s en `dto/`: `CreateProductRequest`, `ProductResponse`. Nunca son entidades ni se persisten. |
 | **Agregado** | Grupo de entidades que cambian juntas y se guardan como una unidad, con una entidad raíz. | `Order` (raíz) + `OrderItem`. `OrderItem` solo se modifica a través de `Order`. |
 | **Bean** | Objeto creado y gestionado por el contenedor de Spring (services, repositories, controllers...). | Todo lo anotado con `@Service`, `@Component`, `@RestController`, `@Configuration`... |
+| **Rol** | Agrupación con nombre de permisos que se asigna a un usuario. Es **configuración**: el código no pregunta por roles. | `CUSTOMER`, `VET`, `ADMIN` y los que cree el admin. Un rol por usuario. |
+| **Permiso** | Capacidad concreta sobre un recurso, comprobada por el código. | `catalog:manage`, `order:read-all`. Se crean con migraciones. |
+| **Authority** (`GrantedAuthority`) | Representación de Spring Security de "algo que el usuario tiene": un `String`. Roles y permisos se convierten en authorities. | `ROLE_ADMIN` (rol, con prefijo) y `catalog:manage` (permiso, sin prefijo). |
+| **Datos de referencia** | Filas que el sistema necesita para funcionar y que existen en todos los entornos. Suelen tener un `code` estable. | Roles, permisos, especies, razas, vacunas, tipos de cita. Migraciones `V<n>__insert_...`. |
+| **Datos de demostración** | Datos ficticios para probar la aplicación en local. Nunca llegan a producción. | Usuarios demo, productos, mascotas. Migraciones repetibles `R__demo_...` solo en `dev`. |
 
 **Resumen:** el *modelo de dominio* son las ideas y reglas del negocio; las *entidades DDD*
 y los *Value Objects* son sus piezas (con y sin identidad); la *entidad JPA* es cómo
