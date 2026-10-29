@@ -373,7 +373,7 @@ Decisiones de modelado:
 | Dinero | `NUMERIC(12,2)` ↔ `BigDecimal`, envuelto en `Money` | Nunca `double`: los decimales binarios no representan exactamente 0.10. |
 | Moneda | Columna `CHAR(3)` (ISO 4217); por ahora siempre `PEN` | El Value Object queda completo y no habrá que migrar si se añade otra moneda. |
 | Enums | `VARCHAR` + `CHECK` ↔ `@Enumerated(EnumType.STRING)` | Legibles en la base de datos; reordenar el enum no corrompe datos (`ORDINAL` sí). |
-| Auditoría | `created_at` / `updated_at` mediante `AuditableEntity` (`@MappedSuperclass`) y JPA Auditing | Evita repetir esos campos en cada entidad. |
+| Auditoría | `created_at` / `updated_at` mediante `AuditableEntity` (`@MappedSuperclass`) y JPA Auditing. En SQL: `TIMESTAMPTZ NOT NULL DEFAULT now()` | Evita repetir esos campos en cada entidad. El `DEFAULT` cubre los `INSERT` que no pasan por JPA (seeders). |
 | Concurrencia | `@Version` (columna `version`) en `Product`, `Order` y `Appointment`; restricción de exclusión en `appointments` | Bloqueo optimista: dos compras simultáneas del último producto no pueden dejar el stock negativo. La exclusión impide citas solapadas (ver más abajo). |
 | Borrado | *Soft delete* (`active = false`) para categorías, productos y mascotas | Los pedidos e historiales los referencian; borrarlos físicamente rompería el histórico. |
 | Snapshot | `order_items` copia el nombre y el precio unitario del producto; `appointments.ends_at` copia la duración del tipo de cita | El pasado no debe cambiar si cambia el catálogo o la configuración. |
