@@ -595,7 +595,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] Renombrar `BackendApplication` a `PlutimiApplication`
 - [x] Perfiles: `application.properties` (común), `application-dev.properties`, `application-prod.properties` y `spring.profiles.default=dev`
 - [x] Añadir dependencias: springdoc-openapi y Testcontainers (los tests usan el perfil `test` y su propio PostgreSQL). Spring Security se añade en la 1.7
-- [ ] `shared/config`: `OpenApiConfig` (título, versión, esquema *bearer*), `CorsConfig` (permitir `localhost:4200` en dev) y un bean `Clock`
+- [x] `shared/config`: `OpenApiConfig` (título, versión, esquema *bearer*), `CorsConfig` (permitir `localhost:4200` en dev) y un bean `Clock`
 - [ ] `shared/persistence`: `AuditableEntity` + `@EnableJpaAuditing`
 - [ ] `shared/money`: Value Object `Money` (`@Embeddable`) con tests unitarios
 - [ ] `shared/web`: `PageResponse<T>` y límite máximo de `size` (100)
@@ -616,7 +616,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [ ] `CategoryService`: crear, actualizar, obtener, listar paginado y desactivar
 - [ ] `CategoryController` con 201 + `Location`, 204 y 404
 - [ ] Generación del `slug` y unicidad de nombre y slug (409)
-- [ ] Tests: unitario del service e integración con Testcontainers (incluye la auditoría de `AuditableEntity`)
+- [ ] Tests: unitario del service e integración con Testcontainers (incluye la auditoría de `AuditableEntity` y la cabecera CORS para `localhost:4200`, ya que es el primer endpoint real)
 
 **1.4 Especies y razas**
 
