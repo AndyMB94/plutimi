@@ -612,7 +612,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 
 - [x] `V1__create_categories_table.sql`
 - [x] Entidad `Category` y `CategoryRepository`
-- [ ] DTOs (`CreateCategoryRequest`, `UpdateCategoryRequest`, `CategoryResponse`) y `CategoryMapper`
+- [x] DTOs (`CreateCategoryRequest`, `UpdateCategoryRequest`, `CategoryResponse`) y `CategoryMapper`
 - [ ] `CategoryService`: crear, actualizar, obtener, listar paginado y desactivar
 - [ ] `CategoryController` con 201 + `Location`, 204 y 404
 - [ ] Generación del `slug` y unicidad de nombre y slug (409)
