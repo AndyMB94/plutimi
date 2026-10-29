@@ -583,6 +583,13 @@ Swagger UI queda disponible en `/swagger-ui.html` (solo en el perfil `dev`).
   `Content-Type: application/problem+json`).
 - Los errores 500 **no exponen detalles internos** (ni *stack traces* ni SQL), pero se
   registran completos en el log.
+- `GlobalExceptionHandler` hereda de `ResponseEntityExceptionHandler`, que ya traduce las
+  excepciones estándar de Spring MVC. Sus textos en español están en `messages.properties`
+  (claves `problemDetail.title.<excepción>` y `problemDetail.<excepción>`).
+- Todas las respuestas pasan por `createResponseEntity`, que añade el `timestamp` (desde el
+  `Clock`). Spring rellena `instance` con la ruta de la petición.
+- El locale es fijo en español (`spring.web.locale=es`), así que los mensajes por defecto de
+  Bean Validation no dependen del servidor ni del cliente.
 
 ### Jerarquía de excepciones
 
@@ -606,12 +613,13 @@ Además, el handler traduce excepciones del framework:
 
 | Excepción | Código |
 |---|---|
-| `MethodArgumentNotValidException` (`@Valid` en el *body*) | 400 + lista de campos |
-| `HandlerMethodValidationException` (parámetros de la URL) | 400 |
-| `HttpMessageNotReadableException` (JSON mal formado) | 400 |
-| `AuthenticationException` / `AccessDeniedException` | 401 / 403, resueltos en la configuración de seguridad |
-| `ObjectOptimisticLockingFailureException` | 409 ("otro usuario modificó el recurso") |
-| `DataIntegrityViolationException` | 409 (última red de seguridad para *constraints* `UNIQUE`) |
+| `MethodArgumentNotValidException` (`@Valid` en el *body*) | 400 + lista `errors` de campos |
+| `HandlerMethodValidationException` (restricciones en parámetros del controller) | 400 + lista `errors` |
+| `HttpMessageNotReadableException` (cuerpo ausente, JSON mal formado o tipo incorrecto) | 400, texto de `messages.properties`, sin el mensaje interno de Jackson |
+| Otras excepciones estándar de Spring MVC (ruta inexistente, método no permitido...) | 404, 405, 415... con textos de `messages.properties` |
+| `AuthenticationException` / `AccessDeniedException` | 401 / 403, resueltos por Spring Security (el handler las relanza; ver sección 1.7 del plan) |
+| `OptimisticLockingFailureException` (incluye la variante de Hibernate) | 409 `concurrent-modification` |
+| `DataIntegrityViolationException` | 409 `data-conflict`, sin nombres de *constraints*; el detalle va al log con `log.warn` |
 | `Exception` (cualquier otra) | 500 genérico + `log.error` con la traza |
 
 ### Flujo de una excepción
