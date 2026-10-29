@@ -605,8 +605,8 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] `shared/exception`: `ApplicationException`, `ResourceNotFoundException`, `ConflictException`, `BusinessException`
 - [x] `GlobalExceptionHandler` con `ProblemDetail`: 404, 409, 422 y 500 (con log)
 - [x] Errores de validación (400) con la lista `errors` de campos
-- [ ] JSON mal formado (400), bloqueo optimista (409) y violación de *constraints* (409)
-- [ ] Tests con `@WebMvcTest` de cada tipo de error
+- [x] JSON mal formado (400), bloqueo optimista (409) y violación de *constraints* (409)
+- [x] Tests con `@WebMvcTest` de cada tipo de error
 
 **1.3 Categorías**
 

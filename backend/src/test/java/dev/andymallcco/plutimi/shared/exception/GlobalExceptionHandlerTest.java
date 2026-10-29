@@ -16,6 +16,8 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
@@ -148,6 +150,55 @@ class GlobalExceptionHandlerTest {
                         """);
     }
 
+    @Test
+    void malformedJsonReturns400InSpanish() {
+        MvcTestResult result = mvc.post().uri("/test/errors/validation")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{ \"name\": ")
+                .exchange();
+
+        assertThat(result)
+                .hasStatus(HttpStatus.BAD_REQUEST)
+                .bodyJson().isLenientlyEqualTo("""
+                        {
+                          "title": "Petición mal formada",
+                          "status": 400,
+                          "detail": "El cuerpo de la petición falta, no es un JSON válido o contiene valores con un tipo incorrecto."
+                        }
+                        """);
+        assertThat(result).bodyText().doesNotContain("SampleRequest");
+    }
+
+    @Test
+    void optimisticLockingFailureReturns409() {
+        assertThat(mvc.get().uri("/test/errors/optimistic-lock"))
+                .hasStatus(HttpStatus.CONFLICT)
+                .bodyJson().isLenientlyEqualTo("""
+                        {
+                          "type": "https://plutimi.andymallcco.dev/problems/concurrent-modification",
+                          "title": "Modificación concurrente",
+                          "status": 409
+                        }
+                        """);
+    }
+
+    @Test
+    void dataIntegrityViolationReturns409WithoutConstraintDetails() {
+        MvcTestResult result = mvc.get().uri("/test/errors/data-integrity").exchange();
+
+        assertThat(result)
+                .hasStatus(HttpStatus.CONFLICT)
+                .bodyJson().isLenientlyEqualTo("""
+                        {
+                          "type": "https://plutimi.andymallcco.dev/problems/data-conflict",
+                          "title": "Conflicto de datos",
+                          "status": 409,
+                          "detail": "La operación entra en conflicto con datos existentes."
+                        }
+                        """);
+        assertThat(result).bodyText().doesNotContain("uk_samples_name");
+    }
+
     // --- Infraestructura del test ---
 
     /** Reloj fijo para comprobar el timestamp exacto. Se usa además de la configuración del slice. */
@@ -186,6 +237,17 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/unexpected")
         void unexpected() {
             throw new IllegalStateException("Connection failed using password " + SECRET);
+        }
+
+        @GetMapping("/optimistic-lock")
+        void optimisticLock() {
+            throw new OptimisticLockingFailureException("Row was updated by another transaction");
+        }
+
+        @GetMapping("/data-integrity")
+        void dataIntegrity() {
+            throw new DataIntegrityViolationException(
+                    "duplicate key value violates unique constraint \"uk_samples_name\"");
         }
 
         @PostMapping("/validation")

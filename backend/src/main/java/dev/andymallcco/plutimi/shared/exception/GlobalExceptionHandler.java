@@ -7,6 +7,8 @@ import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -40,20 +42,40 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     ResponseEntity<Object> handleResourceNotFound(ResourceNotFoundException ex, WebRequest request) {
-        return handleApplicationException(ex, HttpStatus.NOT_FOUND,
-                "resource-not-found", "Recurso no encontrado", request);
+        return problem(ex, HttpStatus.NOT_FOUND, "resource-not-found",
+                "Recurso no encontrado", ex.getMessage(), request);
     }
 
     @ExceptionHandler(ConflictException.class)
     ResponseEntity<Object> handleConflict(ConflictException ex, WebRequest request) {
-        return handleApplicationException(ex, HttpStatus.CONFLICT,
-                "conflict", "Conflicto con el estado actual", request);
+        return problem(ex, HttpStatus.CONFLICT, "conflict",
+                "Conflicto con el estado actual", ex.getMessage(), request);
     }
 
     @ExceptionHandler(BusinessException.class)
     ResponseEntity<Object> handleBusiness(BusinessException ex, WebRequest request) {
-        return handleApplicationException(ex, HttpStatus.UNPROCESSABLE_CONTENT,
-                "business-rule-violation", "Regla de negocio incumplida", request);
+        return problem(ex, HttpStatus.UNPROCESSABLE_CONTENT, "business-rule-violation",
+                "Regla de negocio incumplida", ex.getMessage(), request);
+    }
+
+    /** Bloqueo optimista (@Version): otra transacción modificó la fila entre la lectura y la escritura. */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ResponseEntity<Object> handleOptimisticLocking(OptimisticLockingFailureException ex, WebRequest request) {
+        return problem(ex, HttpStatus.CONFLICT, "concurrent-modification", "Modificación concurrente",
+                "El recurso fue modificado por otra operación. Vuelve a cargarlo e inténtalo de nuevo.", request);
+    }
+
+    /**
+     * Última red de seguridad ante constraints de la base de datos (UNIQUE, FK...).
+     * Los services validan antes; esto cubre carreras entre peticiones simultáneas.
+     * El mensaje real (con nombres de constraints y SQL) solo va al log.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException ex, WebRequest request) {
+        log.warn("Data integrity violation processing {}: {}",
+                request.getDescription(false), ex.getMostSpecificCause().getMessage());
+        return problem(ex, HttpStatus.CONFLICT, "data-conflict", "Conflicto de datos",
+                "La operación entra en conflicto con datos existentes.", request);
     }
 
     @ExceptionHandler(Exception.class)
@@ -106,9 +128,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return super.createResponseEntity(body, headers, statusCode, request);
     }
 
-    private ResponseEntity<Object> handleApplicationException(
-            ApplicationException ex, HttpStatus status, String type, String title, WebRequest request) {
-        ProblemDetail body = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
+    private ResponseEntity<Object> problem(Exception ex, HttpStatus status, String type, String title,
+                                           String detail, WebRequest request) {
+        ProblemDetail body = ProblemDetail.forStatusAndDetail(status, detail);
         body.setType(URI.create(PROBLEM_TYPE_BASE + type));
         body.setTitle(title);
         return handleExceptionInternal(ex, body, new HttpHeaders(), status, request);
