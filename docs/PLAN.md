@@ -598,7 +598,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] `shared/config`: `OpenApiConfig` (título, versión, esquema *bearer*), `CorsConfig` (permitir `localhost:4200` en dev) y un bean `Clock`
 - [x] `shared/persistence`: `AuditableEntity` + `@EnableJpaAuditing`
 - [x] `shared/money`: Value Object `Money` (`@Embeddable`) con tests unitarios
-- [ ] `shared/web`: `PageResponse<T>` y límite máximo de `size` (100)
+- [x] `shared/web`: `PageResponse<T>` y límite máximo de `size` (100)
 
 **1.2 Manejo de errores**
 
