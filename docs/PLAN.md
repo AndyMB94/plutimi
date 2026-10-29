@@ -597,7 +597,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] Añadir dependencias: springdoc-openapi y Testcontainers (los tests usan el perfil `test` y su propio PostgreSQL). Spring Security se añade en la 1.7
 - [x] `shared/config`: `OpenApiConfig` (título, versión, esquema *bearer*), `CorsConfig` (permitir `localhost:4200` en dev) y un bean `Clock`
 - [x] `shared/persistence`: `AuditableEntity` + `@EnableJpaAuditing`
-- [ ] `shared/money`: Value Object `Money` (`@Embeddable`) con tests unitarios
+- [x] `shared/money`: Value Object `Money` (`@Embeddable`) con tests unitarios
 - [ ] `shared/web`: `PageResponse<T>` y límite máximo de `size` (100)
 
 **1.2 Manejo de errores**
