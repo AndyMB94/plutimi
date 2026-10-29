@@ -343,7 +343,7 @@ cobertura, CI y despliegue.
 
 **1.1 Base del proyecto**
 
-- [ ] Renombrar `BackendApplication` a `PlutimiApplication`
+- [x] Renombrar `BackendApplication` a `PlutimiApplication`
 - [ ] Perfiles: `application.properties` (común), `application-dev.properties`, `application-prod.properties` y `spring.profiles.default=dev`
 - [ ] Añadir dependencias: springdoc-openapi, Spring Security, OAuth2 Resource Server (JWT) y Testcontainers
 - [ ] `shared/config`: `OpenApiConfig` (título, versión, esquema *bearer*), `CorsConfig` (permitir `localhost:4200` en dev) y un bean `Clock`
