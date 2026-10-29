@@ -29,7 +29,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@WebMvcTest
+/**
+ * Slice web aislado: {@code controllers} limita los controllers cargados al de prueba, así los
+ * controllers reales de los módulos (que necesitan sus services) no entran en el contexto.
+ * El @ControllerAdvice y los WebMvcConfigurer se siguen cargando.
+ * El @Import es necesario porque el escaneo ignora las clases anidadas en un test.
+ */
+@WebMvcTest(controllers = GlobalExceptionHandlerTest.ErrorTestController.class)
 @Import(GlobalExceptionHandlerTest.ErrorTestController.class)
 class GlobalExceptionHandlerTest {
 

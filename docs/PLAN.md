@@ -610,13 +610,13 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 
 **1.3 Categorías**
 
-- [ ] `V1__create_categories_table.sql`
-- [ ] Entidad `Category` y `CategoryRepository`
-- [ ] DTOs (`CreateCategoryRequest`, `UpdateCategoryRequest`, `CategoryResponse`) y `CategoryMapper`
-- [ ] `CategoryService`: crear, actualizar, obtener, listar paginado y desactivar
-- [ ] `CategoryController` con 201 + `Location`, 204 y 404
-- [ ] Generación del `slug` y unicidad de nombre y slug (409)
-- [ ] Tests: unitario del service e integración con Testcontainers (incluye la auditoría de `AuditableEntity` y la cabecera CORS para `localhost:4200`, ya que es el primer endpoint real)
+- [x] `V1__create_categories_table.sql`
+- [x] Entidad `Category` y `CategoryRepository`
+- [x] DTOs (`CreateCategoryRequest`, `UpdateCategoryRequest`, `CategoryResponse`) y `CategoryMapper`
+- [x] `CategoryService`: crear, actualizar, obtener, listar paginado y desactivar
+- [x] `CategoryController` con 201 + `Location`, 204 y 404
+- [x] Generación del `slug` y unicidad de nombre y slug (409)
+- [x] Tests: unitario del service e integración con Testcontainers (incluye la auditoría de `AuditableEntity` y la cabecera CORS para `localhost:4200`, ya que es el primer endpoint real)
 
 **1.4 Especies y razas**
 
@@ -634,6 +634,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [ ] Entidad `Product` con `Money`, `Set<Long> speciesIds` (`@ElementCollection`) y métodos `decreaseStock`, `increaseStock`, `changePrice`, `changeSpecies` y `deactivate`
 - [ ] `ProductRepository` + `JpaSpecificationExecutor`
 - [ ] DTOs, `ProductMapper` y `ProductService` (CRUD, ajuste de stock y validación de las especies con `SpeciesService`)
+- [ ] Desactivar una categoría con productos activos → 409 (`CategoryHasActiveProductsException`), comprobado en `CategoryService.deactivate` y al desactivar con `PUT active=false`
 - [ ] `ProductSpecifications` + `ProductFilter`: categoría, marca, especie, texto, rango de precio y stock
 - [ ] `ProductController` (GET público; la escritura se protege en la 1.7)
 - [ ] `db/demo/R__demo_01_catalog.sql` (marcas, categorías y productos) y ubicación `db/demo` en `application-dev.properties`
