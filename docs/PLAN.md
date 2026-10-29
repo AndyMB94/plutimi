@@ -614,9 +614,9 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] Entidad `Category` y `CategoryRepository`
 - [x] DTOs (`CreateCategoryRequest`, `UpdateCategoryRequest`, `CategoryResponse`) y `CategoryMapper`
 - [x] `CategoryService`: crear, actualizar, obtener, listar paginado y desactivar
-- [ ] `CategoryController` con 201 + `Location`, 204 y 404
+- [x] `CategoryController` con 201 + `Location`, 204 y 404
 - [x] Generación del `slug` y unicidad de nombre y slug (409)
-- [ ] Tests: unitario del service e integración con Testcontainers (incluye la auditoría de `AuditableEntity` y la cabecera CORS para `localhost:4200`, ya que es el primer endpoint real)
+- [x] Tests: unitario del service e integración con Testcontainers (incluye la auditoría de `AuditableEntity` y la cabecera CORS para `localhost:4200`, ya que es el primer endpoint real)
 
 **1.4 Especies y razas**
 

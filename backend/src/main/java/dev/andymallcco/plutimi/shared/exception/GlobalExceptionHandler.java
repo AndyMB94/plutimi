@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -56,6 +57,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ResponseEntity<Object> handleBusiness(BusinessException ex, WebRequest request) {
         return problem(ex, HttpStatus.UNPROCESSABLE_CONTENT, "business-rule-violation",
                 "Regla de negocio incumplida", ex.getMessage(), request);
+    }
+
+    /** Ordenación por una propiedad que no existe, por ejemplo {@code ?sort=unknown}. */
+    @ExceptionHandler(PropertyReferenceException.class)
+    ResponseEntity<Object> handleInvalidSortProperty(PropertyReferenceException ex, WebRequest request) {
+        return problem(ex, HttpStatus.BAD_REQUEST, "invalid-sort", "Ordenación inválida",
+                "No se puede ordenar por '" + ex.getPropertyName() + "'.", request);
     }
 
     /** Bloqueo optimista (@Version): otra transacción modificó la fila entre la lectura y la escritura. */

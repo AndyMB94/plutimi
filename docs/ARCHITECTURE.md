@@ -617,6 +617,7 @@ Además, el handler traduce excepciones del framework:
 | `MethodArgumentNotValidException` (`@Valid` en el *body*) | 400 + lista `errors` de campos |
 | `HandlerMethodValidationException` (restricciones en parámetros del controller) | 400 + lista `errors` |
 | `HttpMessageNotReadableException` (cuerpo ausente, JSON mal formado o tipo incorrecto) | 400, texto de `messages.properties`, sin el mensaje interno de Jackson |
+| `PropertyReferenceException` (`?sort=` con una propiedad inexistente) | 400 `invalid-sort` |
 | Otras excepciones estándar de Spring MVC (ruta inexistente, método no permitido...) | 404, 405, 415... con textos de `messages.properties` |
 | `AuthenticationException` / `AccessDeniedException` | 401 / 403, resueltos por Spring Security (el handler las relanza; ver sección 1.7 del plan) |
 | `OptimisticLockingFailureException` (incluye la variante de Hibernate) | 409 `concurrent-modification` |
