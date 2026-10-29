@@ -81,6 +81,14 @@ plutimi/
 - Perfiles `dev` y `prod`; secretos siempre en variables de entorno.
 - Tests en cada fase, junto al código que prueban.
 
+**Git**
+- Commits en español siguiendo Conventional Commits: `<tipo>(<ámbito>): <descripción>`.
+  - Tipo en inglés: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `build`, `ci`.
+  - Ámbito: el nombre del módulo cuando aplique (`catalog`, `auth`, `shared`...).
+  - Descripción breve en español, en imperativo (ej. `feat(catalog): agregar búsqueda de productos con filtros`).
+  - Cuerpo detallado en español explicando qué se hizo y por qué.
+- Una rama por sección del plan (ej. `feature/1.1-base-proyecto`), que se integra a `main` con un Pull Request en GitHub.
+
 ## Fases (detalle y checkboxes en docs/PLAN.md)
 1. Base (errores, configuración, Swagger), catálogo y usuarios con JWT
 2. Carrito, pedidos y pago en modo prueba
