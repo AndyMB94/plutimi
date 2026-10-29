@@ -604,7 +604,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 
 - [x] `shared/exception`: `ApplicationException`, `ResourceNotFoundException`, `ConflictException`, `BusinessException`
 - [x] `GlobalExceptionHandler` con `ProblemDetail`: 404, 409, 422 y 500 (con log)
-- [ ] Errores de validación (400) con la lista `errors` de campos
+- [x] Errores de validación (400) con la lista `errors` de campos
 - [ ] JSON mal formado (400), bloqueo optimista (409) y violación de *constraints* (409)
 - [ ] Tests con `@WebMvcTest` de cada tipo de error
 
@@ -660,6 +660,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [ ] `auth`: `JwtProperties` (`@ConfigurationProperties`), `JwtEncoder` y `JwtDecoder` con HS256
 - [ ] `TokenService`: access token con los *claims* `sub`, `email`, `role` y `permissions`
 - [ ] `SecurityConfig`: *stateless*, rutas públicas, 401/403 con `ProblemDetail` y `@EnableMethodSecurity`
+- [ ] `@PreAuthorize` lanza `AccessDeniedException` **dentro** del controller, y el `@ExceptionHandler(Exception.class)` de `GlobalExceptionHandler` la capturaría y la convertiría en un 500 en vez de un 403. Añadir en `GlobalExceptionHandler` un handler que vuelva a lanzar `AccessDeniedException` y `AuthenticationException`, para que el `ExceptionTranslationFilter` de Spring Security decida entre 401 (anónimo) y 403 (sin permiso) con sus handlers de `ProblemDetail`. Tests de ambos casos
 - [ ] `JwtAuthenticationConverter` propio: `role` → `ROLE_<code>` y cada permiso → *authority*; principal `AuthenticatedUser`
 - [ ] `SecurityContextCurrentUserProvider`
 - [ ] `POST /auth/register` con BCrypt, rol `CUSTOMER` y 409 si el email existe

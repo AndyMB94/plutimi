@@ -2,6 +2,9 @@ package dev.andymallcco.plutimi.shared.exception;
 
 import java.net.URI;
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -9,9 +12,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.Errors;
+import org.springframework.validation.method.ParameterErrors;
+import org.springframework.validation.method.ParameterValidationResult;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
@@ -57,6 +65,38 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, body, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request);
     }
 
+    /** {@code @Valid} sobre un {@code @RequestBody}: errores por campo y a nivel de objeto. */
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        return handleExceptionInternal(ex, validationProblem(toFieldErrors(ex.getBindingResult())),
+                headers, status, request);
+    }
+
+    /**
+     * Validación de parámetros del método del controller ({@code @PathVariable}, {@code @RequestParam}
+     * con restricciones, o un {@code @RequestBody} validado junto a ellos).
+     */
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            HandlerMethodValidationException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        if (ex.isForReturnValue()) {
+            // Un valor de retorno inválido es un error del servidor, no del cliente
+            return super.handleHandlerMethodValidationException(ex, headers, status, request);
+        }
+        List<FieldErrorDetail> errors = new ArrayList<>();
+        for (ParameterValidationResult result : ex.getParameterValidationResults()) {
+            if (result instanceof ParameterErrors parameterErrors) {
+                errors.addAll(toFieldErrors(parameterErrors));
+            } else {
+                String parameterName = result.getMethodParameter().getParameterName();
+                result.getResolvableErrors().forEach(error ->
+                        errors.add(new FieldErrorDetail(parameterName, error.getDefaultMessage())));
+            }
+        }
+        return handleExceptionInternal(ex, validationProblem(errors), headers, status, request);
+    }
+
     @Override
     protected ResponseEntity<Object> createResponseEntity(
             Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
@@ -72,6 +112,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         body.setType(URI.create(PROBLEM_TYPE_BASE + type));
         body.setTitle(title);
         return handleExceptionInternal(ex, body, new HttpHeaders(), status, request);
+    }
+
+    private static List<FieldErrorDetail> toFieldErrors(Errors validationErrors) {
+        List<FieldErrorDetail> errors = new ArrayList<>();
+        validationErrors.getFieldErrors().forEach(error ->
+                errors.add(new FieldErrorDetail(error.getField(), error.getDefaultMessage())));
+        validationErrors.getGlobalErrors().forEach(error ->
+                errors.add(new FieldErrorDetail(error.getObjectName(), error.getDefaultMessage())));
+        return errors;
+    }
+
+    private static ProblemDetail validationProblem(List<FieldErrorDetail> errors) {
+        List<FieldErrorDetail> sortedErrors = errors.stream()
+                .sorted(Comparator.comparing(FieldErrorDetail::field).thenComparing(FieldErrorDetail::message))
+                .toList();
+        String count = sortedErrors.size() == 1
+                ? "1 error de validación"
+                : sortedErrors.size() + " errores de validación";
+        ProblemDetail body = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "La petición contiene " + count);
+        body.setType(URI.create(PROBLEM_TYPE_BASE + "validation-error"));
+        body.setTitle("Datos inválidos");
+        body.setProperty("errors", sortedErrors);
+        return body;
     }
 
 }

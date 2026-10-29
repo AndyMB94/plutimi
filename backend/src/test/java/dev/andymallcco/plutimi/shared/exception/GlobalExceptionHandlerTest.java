@@ -2,6 +2,11 @@ package dev.andymallcco.plutimi.shared.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -16,6 +21,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -102,6 +110,44 @@ class GlobalExceptionHandlerTest {
                         """);
     }
 
+    @Test
+    void invalidRequestBodyReturns400WithFieldErrors() {
+        assertThat(mvc.post().uri("/test/errors/validation")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        { "name": "", "price": null }
+                        """))
+                .hasStatus(HttpStatus.BAD_REQUEST)
+                .bodyJson().isLenientlyEqualTo("""
+                        {
+                          "type": "https://plutimi.andymallcco.dev/problems/validation-error",
+                          "title": "Datos inválidos",
+                          "status": 400,
+                          "detail": "La petición contiene 2 errores de validación",
+                          "errors": [
+                            { "field": "name",  "message": "El nombre es obligatorio" },
+                            { "field": "price", "message": "no debe ser nulo" }
+                          ]
+                        }
+                        """);
+    }
+
+    @Test
+    void invalidPathVariableReturns400WithParameterError() {
+        assertThat(mvc.get().uri("/test/errors/validation/0"))
+                .hasStatus(HttpStatus.BAD_REQUEST)
+                .bodyJson().isLenientlyEqualTo("""
+                        {
+                          "type": "https://plutimi.andymallcco.dev/problems/validation-error",
+                          "status": 400,
+                          "detail": "La petición contiene 1 error de validación",
+                          "errors": [
+                            { "field": "id", "message": "El id debe ser positivo" }
+                          ]
+                        }
+                        """);
+    }
+
     // --- Infraestructura del test ---
 
     /** Reloj fijo para comprobar el timestamp exacto. Se usa además de la configuración del slice. */
@@ -142,6 +188,20 @@ class GlobalExceptionHandlerTest {
             throw new IllegalStateException("Connection failed using password " + SECRET);
         }
 
+        @PostMapping("/validation")
+        void validation(@Valid @RequestBody SampleRequest request) {
+        }
+
+        @GetMapping("/validation/{id}")
+        void pathValidation(@PathVariable @Positive(message = "El id debe ser positivo") Long id) {
+        }
+
+    }
+
+    /** {@code price} usa el mensaje por defecto de @NotNull para comprobar que sale en español. */
+    public record SampleRequest(
+            @NotBlank(message = "El nombre es obligatorio") String name,
+            @NotNull BigDecimal price) {
     }
 
     static class SampleNotFoundException extends ResourceNotFoundException {
