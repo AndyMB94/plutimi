@@ -594,7 +594,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 
 - [x] Renombrar `BackendApplication` a `PlutimiApplication`
 - [x] Perfiles: `application.properties` (común), `application-dev.properties`, `application-prod.properties` y `spring.profiles.default=dev`
-- [ ] Añadir dependencias: springdoc-openapi y Testcontainers (los tests usan el perfil `test` y su propio PostgreSQL). Spring Security se añade en la 1.7
+- [x] Añadir dependencias: springdoc-openapi y Testcontainers (los tests usan el perfil `test` y su propio PostgreSQL). Spring Security se añade en la 1.7
 - [ ] `shared/config`: `OpenApiConfig` (título, versión, esquema *bearer*), `CorsConfig` (permitir `localhost:4200` en dev) y un bean `Clock`
 - [ ] `shared/persistence`: `AuditableEntity` + `@EnableJpaAuditing`
 - [ ] `shared/money`: Value Object `Money` (`@Embeddable`) con tests unitarios
@@ -779,6 +779,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [ ] `docker-compose.prod.yml`: Nginx + backend + PostgreSQL (sin exponer el puerto de la base de datos)
 - [ ] Nginx como *reverse proxy* con HTTPS (Let's Encrypt) en `plutimi.andymallcco.dev`
 - [ ] Variables de entorno de producción en el VPS (incluidas `ADMIN_EMAIL` y `ADMIN_PASSWORD`) y Swagger desactivado en `prod`
+- [ ] Mensaje claro si falta una variable obligatoria en `prod`: Spring Boot deja un placeholder sin resolver como texto literal (`${DB_URL}`) y el error aparece después, confuso (`'url' must start with jdbc`). Validar al arrancar que las variables existen, por ejemplo con `@ConfigurationProperties` + `@Validated`
 - [ ] Copias de seguridad de PostgreSQL (`pg_dump` programado)
 - [ ] Despliegue automático desde GitHub Actions (opcional)
 
