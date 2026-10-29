@@ -43,7 +43,7 @@ plutimi/
 
 **Arquitectura**
 - Monolito modular por funcionalidad: `shared`, `auth`, `user`, `species`, `catalog`, `cart`, `order`, `payment`, `checkout`, `pet`, `medicalrecord`, `appointment`, `notification`.
-- Cada módulo: entity, repository (package-private), service, controller, mapper y `dto/`. Lo transversal en `shared` (config, exception, persistence, security, money, web).
+- Cada módulo: entity, repository (package-private), service, controller, mapper y `dto/`. Lo transversal en `shared` (config, exception, persistence, security, money, text, web).
 - Entre módulos: solo a través del service del otro módulo; relaciones por ID, no por asociación JPA; efectos secundarios con eventos de Spring.
 - Servicios externos (pagos, correo) en clases client/gateway propias.
 

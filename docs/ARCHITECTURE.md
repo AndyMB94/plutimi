@@ -94,6 +94,7 @@ backend/src/main/java/dev/andymallcco/plutimi/
 │   ├── persistence/     # AuditableEntity (created_at / updated_at)
 │   ├── security/        # CurrentUserProvider, AuthenticatedUser (abstracciones)
 │   ├── money/           # Money (Value Object)
+│   ├── text/            # Utilidades de texto: Slugs
 │   └── web/             # PageResponse y utilidades HTTP
 ├── auth/                # Registro, login, tokens, configuración de Spring Security
 ├── user/                # Usuarios, roles y permisos (RBAC)
