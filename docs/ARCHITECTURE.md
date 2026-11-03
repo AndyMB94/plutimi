@@ -572,6 +572,37 @@ puede cambiar entre versiones. Así el contrato es estable. El `size` máximo es
 springdoc-openapi genera la especificación OpenAPI a partir de los controllers y los DTOs.
 Swagger UI queda disponible en `/swagger-ui.html` (solo en el perfil `dev`).
 
+**Respuestas de éxito.** springdoc deduce el código de éxito de la firma del método, sin
+ejecutarlo: usa el de `@ResponseStatus` o, si no hay, 200. Cuando el código real se decide
+en tiempo de ejecución, hay que declararlo con `@ApiResponse`:
+
+| Caso | Qué poner |
+|---|---|
+| GET / PUT que devuelven el DTO | Nada: springdoc documenta 200 con el esquema del DTO |
+| POST que crea y devuelve `ResponseEntity.created(...)` | `@ApiResponse(responseCode = "201", ...)` con la cabecera `Location` |
+| DELETE o acción sin cuerpo (`void` + `@ResponseStatus(NO_CONTENT)`) | `@ApiResponse(responseCode = "204", ...)` con una descripción del efecto |
+
+```java
+@Operation(summary = "Crear una categoría")
+@ApiResponse(responseCode = "201", description = "Categoría creada",
+        headers = @Header(name = HttpHeaders.LOCATION, description = "URL de la categoría creada",
+                schema = @Schema(type = "string", format = "uri")))
+@PostMapping
+public ResponseEntity<CategoryResponse> create(...) { ... }
+
+@Operation(summary = "Desactivar una categoría", description = "Borrado lógico. Es idempotente.")
+@ApiResponse(responseCode = "204", description = "Categoría desactivada")
+@DeleteMapping("/{id}")
+@ResponseStatus(HttpStatus.NO_CONTENT)
+public void deactivate(...) { ... }
+```
+
+Las respuestas de error (400, 404, 409, 422...) **no** se declaran en cada método:
+springdoc las añade a partir de los `@ExceptionHandler` de `GlobalExceptionHandler`.
+
+> **Desde Django:** equivale a `@extend_schema(responses={201: CategorySerializer})` de
+> drf-spectacular cuando la vista devuelve `Response(status=201)`.
+
 ---
 
 ## 9. Manejo de errores
