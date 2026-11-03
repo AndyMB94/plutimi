@@ -627,7 +627,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] Entidades `Species` y `Breed`, repositorios, DTOs y mappers
 - [x] `SpeciesService`: listados públicos, CRUD y método `assertBreedBelongsToSpecies` para otros módulos
 - [x] `SpeciesController` y `BreedController`
-- [ ] Tests
+- [x] Tests
 
 **1.5 Marcas y productos**
 
