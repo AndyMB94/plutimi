@@ -478,8 +478,10 @@ Leyenda de acceso: 🌐 público · 👤 autenticado (con control de propiedad e
 
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
-| GET | `/api/v1/species` | 🌐 | Especies activas |
-| GET | `/api/v1/species/{id}/breeds` | 🌐 | Razas de una especie |
+| GET | `/api/v1/species` | 🌐 | Especies activas (`?includeInactive=true` para todas) |
+| GET | `/api/v1/species/{id}` | 🌐 | Detalle de una especie (destino del `Location` al crear) |
+| GET | `/api/v1/species/{id}/breeds` | 🌐 | Razas activas de una especie (`?includeInactive=true` para todas) |
+| GET | `/api/v1/breeds/{id}` | 🌐 | Detalle de una raza (destino del `Location` al crear) |
 | POST | `/api/v1/species` | `species:manage` | Crear especie → 201 |
 | PUT | `/api/v1/species/{id}` | `species:manage` | Actualizar |
 | POST | `/api/v1/species/{id}/breeds` | `species:manage` | Crear raza → 201 |
@@ -624,7 +626,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] `V3__insert_species_and_breeds.sql`: especies base y razas comunes de perro y gato, cada especie con "Mestizo" o "Común"
 - [x] Entidades `Species` y `Breed`, repositorios, DTOs y mappers
 - [x] `SpeciesService`: listados públicos, CRUD y método `assertBreedBelongsToSpecies` para otros módulos
-- [ ] `SpeciesController` y `BreedController`
+- [x] `SpeciesController` y `BreedController`
 - [ ] Tests
 
 **1.5 Marcas y productos**
