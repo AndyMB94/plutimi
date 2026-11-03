@@ -6,6 +6,9 @@ import dev.andymallcco.plutimi.catalog.dto.UpdateCategoryRequest;
 import dev.andymallcco.plutimi.shared.web.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -14,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.SortDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -52,6 +56,9 @@ public class CategoryController {
     }
 
     @Operation(summary = "Crear una categoría")
+    @ApiResponse(responseCode = "201", description = "Categoría creada",
+            headers = @Header(name = HttpHeaders.LOCATION, description = "URL de la categoría creada",
+                    schema = @Schema(type = "string", format = "uri")))
     @PostMapping
     public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CreateCategoryRequest request) {
         CategoryResponse created = categoryService.create(request);
@@ -70,6 +77,7 @@ public class CategoryController {
     }
 
     @Operation(summary = "Desactivar una categoría", description = "Borrado lógico. Es idempotente.")
+    @ApiResponse(responseCode = "204", description = "Categoría desactivada")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deactivate(@PathVariable @Positive Long id) {

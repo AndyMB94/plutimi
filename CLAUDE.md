@@ -65,7 +65,7 @@ plutimi/
 - `/api/v1/<recurso-en-plural>` en kebab-case. Acciones de negocio: `POST /api/v1/orders/{id}/cancel`.
 - 201 (+ `Location`) al crear, 204 al eliminar, 400 validación, 401/403 seguridad, 404 no existe o es ajeno, 409 conflicto, 422 regla de negocio.
 - `@Valid` + Bean Validation. Paginación en todos los listados con `PageResponse<T>`.
-- Documentada con springdoc-openapi.
+- Documentada con springdoc-openapi. Los POST que crean llevan `@ApiResponse(responseCode = "201")` con la cabecera `Location` y los DELETE `@ApiResponse(responseCode = "204")`; los errores no se declaran por método.
 
 **Errores**
 - `shared/exception/GlobalExceptionHandler` (`@RestControllerAdvice`) devuelve `ProblemDetail`.
