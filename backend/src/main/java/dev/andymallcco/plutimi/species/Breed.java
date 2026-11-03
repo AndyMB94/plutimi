@@ -37,7 +37,8 @@ public class Breed extends AuditableEntity {
 
     private boolean active;
 
-    public Breed(Species species, String name) {
+    // Package-private: fuera del módulo las razas se crean con Species.newBreed
+    Breed(Species species, String name) {
         this.species = Objects.requireNonNull(species, "species must not be null");
         this.name = Species.normalizeName(name);
         this.active = true;

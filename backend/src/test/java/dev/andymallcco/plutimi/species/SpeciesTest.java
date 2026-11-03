@@ -1,6 +1,7 @@
 package dev.andymallcco.plutimi.species;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -28,6 +29,26 @@ class SpeciesTest {
 
         assertThat(species.getName()).isEqualTo("Perros");
         assertThat(species.getCode()).isEqualTo("DOG");
+    }
+
+    @Test
+    void newBreedBelongsToThisSpecies() {
+        Species species = new Species("DOG", "Perro");
+
+        Breed breed = species.newBreed("Beagle");
+
+        assertThat(breed.getSpecies()).isSameAs(species);
+        assertThat(breed.getName()).isEqualTo("Beagle");
+    }
+
+    @Test
+    void inactiveSpeciesCannotHaveNewBreeds() {
+        Species species = new Species("DOG", "Perro");
+        species.deactivate();
+
+        assertThatThrownBy(() -> species.newBreed("Beagle"))
+                .isInstanceOf(InactiveSpeciesException.class)
+                .hasMessage("La especie 'Perro' está desactivada");
     }
 
     @Test

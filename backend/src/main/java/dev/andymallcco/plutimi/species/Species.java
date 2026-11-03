@@ -41,6 +41,14 @@ public class Species extends AuditableEntity {
         this.name = normalizeName(name);
     }
 
+    /** Única forma de crear una raza: así la regla de la especie activa no se puede saltar. */
+    public Breed newBreed(String breedName) {
+        if (!active) {
+            throw new InactiveSpeciesException(name);
+        }
+        return new Breed(this, breedName);
+    }
+
     public void activate() {
         this.active = true;
     }

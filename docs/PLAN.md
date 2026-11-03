@@ -623,7 +623,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] `V2__create_species_and_breeds_tables.sql` (con `UNIQUE (id, species_id)` en `breeds`)
 - [x] `V3__insert_species_and_breeds.sql`: especies base y razas comunes de perro y gato, cada especie con "Mestizo" o "Común"
 - [x] Entidades `Species` y `Breed`, repositorios, DTOs y mappers
-- [ ] `SpeciesService`: listados públicos, CRUD y método `assertBreedBelongsToSpecies` para otros módulos
+- [x] `SpeciesService`: listados públicos, CRUD y método `assertBreedBelongsToSpecies` para otros módulos
 - [ ] `SpeciesController` y `BreedController`
 - [ ] Tests
 
