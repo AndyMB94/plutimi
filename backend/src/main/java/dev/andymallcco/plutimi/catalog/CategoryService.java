@@ -25,7 +25,7 @@ public class CategoryService {
 
     @Transactional
     public CategoryResponse create(CreateCategoryRequest request) {
-        String name = Category.normalizeName(request.name());
+        String name = CatalogNames.normalize(request.name());
         assertNameAndSlugAvailable(name, null);
 
         Category category = categoryRepository.save(new Category(name, request.description()));
@@ -35,7 +35,7 @@ public class CategoryService {
     @Transactional
     public CategoryResponse update(Long id, UpdateCategoryRequest request) {
         Category category = findCategory(id);
-        String name = Category.normalizeName(request.name());
+        String name = CatalogNames.normalize(request.name());
         // Comprobar ANTES de modificar la entidad: si estuviera modificada, la consulta provocaría
         // un auto-flush y el UPDATE chocaría con el índice único antes de nuestra validación.
         assertNameAndSlugAvailable(name, id);

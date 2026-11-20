@@ -1,9 +1,9 @@
 package dev.andymallcco.plutimi.catalog.dto;
 
 /**
- * Reglas de validación compartidas por los requests de categorías.
+ * Reglas de validación compartidas por los requests del catálogo (categorías, marcas y productos).
  */
-final class CategoryValidation {
+final class CatalogValidation {
 
     /**
      * Al menos una letra latina (con o sin tilde) o un dígito, para que siempre se pueda generar un slug.
@@ -11,7 +11,7 @@ final class CategoryValidation {
      */
     static final String NAME_HAS_LETTER_OR_DIGIT = "(?s).*[\\p{IsLatin}0-9].*";
 
-    private CategoryValidation() {
+    private CatalogValidation() {
     }
 
 }
