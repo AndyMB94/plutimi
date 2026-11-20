@@ -639,9 +639,9 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] DTOs, `ProductMapper` y `ProductService` (CRUD, ajuste de stock y validación de las especies con `SpeciesService.assertActiveSpecies`). Reglas: la categoría debe estar activa si cambia o si el producto queda activo (422); la marca solo si cambia (422); solo se validan las especies añadidas. El PUT no toca el stock. El listado llega con los filtros
 - [x] Desactivar una categoría con productos activos → 409 (`CategoryHasActiveProductsException`), comprobado en `CategoryService.deactivate` y al desactivar con `PUT active=false`
 - [x] `ProductSpecifications` + `ProductFilter`: categoría, marca, especie, texto, rango de precio y stock. El listado devuelve `ProductSummaryResponse` y carga la marca con `@EntityGraph` (sin N+1)
-- [ ] `ProductController` (GET público; la escritura se protege en la 1.7)
+- [x] `ProductController` (GET público; la escritura se protege en la 1.7)
 - [ ] `db/demo/R__demo_01_catalog.sql` (marcas, categorías y productos) y ubicación `db/demo` en `application-dev.properties`
-- [ ] Tests: reglas de `Product`, Specifications con Testcontainers y controller
+- [x] Tests: reglas de `Product`, Specifications con Testcontainers y controller
 
 **1.6 Usuarios, roles y permisos (RBAC)**
 
