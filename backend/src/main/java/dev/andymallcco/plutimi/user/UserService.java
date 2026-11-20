@@ -10,12 +10,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Casos de uso de usuarios para la administración. El alta (registro y primer admin) y el perfil
- * propio se completan en las tareas siguientes.
+ * Casos de uso de usuarios: alta, consulta y administración (rol y estado). El perfil propio se
+ * expone en la 1.7 con {@code /users/me}.
  * <p>
  * Regla que depende de otros usuarios: siempre debe quedar al menos un administrador activo.
  * Los efectos en otros módulos (revocar refresh tokens) se comunican con eventos, así
@@ -30,6 +31,33 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final PasswordEncoder passwordEncoder;
+
+    /**
+     * Da de alta un usuario con un rol de sistema. Lo usan {@code AdminInitializer} (ADMIN) y, en
+     * la 1.7, el registro (CUSTOMER).
+     *
+     * @throws EmailAlreadyRegisteredException si el email ya está registrado (409)
+     */
+    @Transactional
+    public UserResponse create(NewUser newUser, String roleCode) {
+        String email = User.normalizeEmail(newUser.email());
+        if (userRepository.existsByEmail(email)) {
+            throw new EmailAlreadyRegisteredException(email);
+        }
+        // Los roles de sistema vienen de V7: si falta, la base de datos está mal, no la petición
+        Role role = roleRepository.findByCode(roleCode)
+                .orElseThrow(() -> new IllegalStateException("Role not found: " + roleCode));
+
+        User user = new User(email, passwordEncoder.encode(newUser.rawPassword()),
+                newUser.firstName(), newUser.lastName(), newUser.phone(), role);
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
+    /** ¿Hay algún usuario con el rol ADMIN, activo o no? */
+    public boolean adminExists() {
+        return userRepository.existsByRoleCode(Role.ADMIN_CODE);
+    }
 
     public UserResponse getById(Long id) {
         return userMapper.toResponse(findUserWithRole(id));

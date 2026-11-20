@@ -12,6 +12,8 @@ interface RoleRepository extends JpaRepository<Role, Long> {
     // El código se guarda normalizado en mayúsculas: basta la comparación exacta
     boolean existsByCode(String code);
 
+    Optional<Role> findByCode(String code);
+
     /**
      * Un rol con sus permisos en una sola consulta (LEFT JOIN). Aquí sí se puede usar un
      * {@code @EntityGraph} sobre una colección porque no hay paginación (ver

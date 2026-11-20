@@ -24,6 +24,11 @@ interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExec
 
     boolean existsByRoleId(Long roleId);
 
+    boolean existsByRoleCode(String roleCode);
+
+    // El email se guarda normalizado en minúsculas: basta la comparación exacta
+    boolean existsByEmail(String email);
+
     /** Spring Data genera el JOIN con roles a partir del nombre: role.code = ? AND enabled = true. */
     long countByRoleCodeAndEnabledTrue(String roleCode);
 
