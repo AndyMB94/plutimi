@@ -43,6 +43,12 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
         </dependency>
+        <!-- Solo el hash de contraseñas (BCrypt), sin filtros ni autoconfiguración de seguridad.
+             El starter de Spring Security completo se añade en la 1.7 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

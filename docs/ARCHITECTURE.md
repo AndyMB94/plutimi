@@ -841,8 +841,12 @@ erDiagram
   (`role_permissions`, N:M con PK compuesta).
 - Roles base: `CUSTOMER` (asignado al registrarse), `VET` y `ADMIN`, marcados como `system`.
   El admin puede crear roles nuevos con cualquier combinación de permisos.
-- El rol `ADMIN` nunca pierde `role:manage` ni `user:manage` (409 si se intenta quitárselos):
-  así siempre hay alguien capaz de gestionar roles y usuarios.
+- El rol `ADMIN` nunca pierde `role:manage` ni `user:manage` (409 si se intenta quitárselos),
+  y no se puede quitar el rol ni desactivar al **último administrador activo** (409): así
+  siempre hay alguien capaz de gestionar roles y usuarios. La primera regla vive en `Role`
+  (no depende de otros datos); la segunda en `UserService`, porque cuenta los demás usuarios.
+- El `code` de un rol no cambia nunca: es la clave estable que usa el código. El nombre y la
+  descripción sí se pueden cambiar.
 - Los permisos son de solo lectura en la API: se crean con migraciones porque cada uno
   tiene sentido solo si hay código que lo comprueba.
 - Catálogo de permisos y asignación por rol: [PLAN.md §3](PLAN.md#3-roles-y-permisos).
@@ -862,8 +866,9 @@ public ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductR
   `STOCK_MANAGER` que solo gestione el catálogo basta con asignarle `catalog:manage` desde
   la API. Con `hasRole('ADMIN')` habría que cambiar el código y desplegar.
 - Las reglas quedan documentadas en un solo lugar: la tabla de asignación.
-- Solo hay dos referencias a códigos de rol en el código: el registro (`CUSTOMER`) y el
-  listado de veterinarios (`VET`).
+- Ningún endpoint comprueba un código de rol. Solo se usan para asignar o proteger roles: el
+  registro (`CUSTOMER`), el listado de veterinarios (`VET`) y las protecciones de `ADMIN`
+  (`AdminInitializer`, permisos bloqueados y último admin activo).
 
 **Propiedad y permisos `*:read-all`.** Que un cliente vea *sus* pedidos no es un permiso,
 es una regla de propiedad que aplica el service. Los permisos `*:read-all` amplían ese

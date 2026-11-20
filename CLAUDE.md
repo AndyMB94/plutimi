@@ -91,6 +91,7 @@ plutimi/
   - Ámbito: el nombre del módulo cuando aplique (`catalog`, `auth`, `shared`...).
   - Descripción breve en español, en imperativo (ej. `feat(catalog): agregar búsqueda de productos con filtros`).
   - Cuerpo detallado en español explicando qué se hizo y por qué.
+  - Los commits no llevan la línea `Co-Authored-By` y las descripciones de PR no llevan la línea "Generated with Claude Code".
 - Una rama por sección del plan (ej. `feature/1.1-base-proyecto`), que se integra a `main` con un Pull Request en GitHub.
 
 ## Fases (detalle y checkboxes en docs/PLAN.md)
