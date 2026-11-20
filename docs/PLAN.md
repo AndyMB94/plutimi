@@ -502,7 +502,7 @@ Leyenda de acceso: 🌐 público · 👤 autenticado (con control de propiedad e
 | POST | `/api/v1/brands` | `catalog:manage` | Crear → 201 |
 | PUT | `/api/v1/brands/{id}` | `catalog:manage` | Actualizar |
 | DELETE | `/api/v1/brands/{id}` | `catalog:manage` | Desactivar → 204 (se permite aunque tenga productos activos: la marca es opcional) |
-| GET | `/api/v1/products` | 🌐 | Catálogo con filtros: `categoryId`, `brandId`, `speciesId`, `q`, `minPrice`, `maxPrice`, `inStock` |
+| GET | `/api/v1/products` | 🌐 | Catálogo con filtros: `categoryId`, `brandId`, `speciesId`, `q`, `minPrice`, `maxPrice`, `inStock` e `includeInactive` (en la 1.7, solo con `catalog:manage`). Orden por defecto `name`; también `price.amount` y `createdAt` |
 | GET | `/api/v1/products/{id}` | 🌐 | Detalle, con marca y especies |
 | POST | `/api/v1/products` | `catalog:manage` | Crear (incluye `speciesIds`) → 201 |
 | PUT | `/api/v1/products/{id}` | `catalog:manage` | Actualizar |
@@ -638,7 +638,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] `ProductRepository` + `JpaSpecificationExecutor`
 - [x] DTOs, `ProductMapper` y `ProductService` (CRUD, ajuste de stock y validación de las especies con `SpeciesService.assertActiveSpecies`). Reglas: la categoría debe estar activa si cambia o si el producto queda activo (422); la marca solo si cambia (422); solo se validan las especies añadidas. El PUT no toca el stock. El listado llega con los filtros
 - [x] Desactivar una categoría con productos activos → 409 (`CategoryHasActiveProductsException`), comprobado en `CategoryService.deactivate` y al desactivar con `PUT active=false`
-- [ ] `ProductSpecifications` + `ProductFilter`: categoría, marca, especie, texto, rango de precio y stock
+- [x] `ProductSpecifications` + `ProductFilter`: categoría, marca, especie, texto, rango de precio y stock. El listado devuelve `ProductSummaryResponse` y carga la marca con `@EntityGraph` (sin N+1)
 - [ ] `ProductController` (GET público; la escritura se protege en la 1.7)
 - [ ] `db/demo/R__demo_01_catalog.sql` (marcas, categorías y productos) y ubicación `db/demo` en `application-dev.properties`
 - [ ] Tests: reglas de `Product`, Specifications con Testcontainers y controller
@@ -672,6 +672,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [ ] `POST /auth/refresh` con rotación, detección de reutilización y permisos releídos de la base de datos
 - [ ] `POST /auth/logout`
 - [ ] `@PreAuthorize("hasAuthority(...)")` en los endpoints de catálogo, especies, usuarios y roles
+- [ ] `includeInactive=true` en los listados públicos (productos, categorías, marcas, especies) solo con el permiso de gestión correspondiente; sin él, se ignora o devuelve 403
 - [ ] Endpoints `/users/me` (perfil, permisos y cambio de contraseña)
 - [ ] Swagger: botón *Authorize* con *bearer token*
 - [ ] Tests: registro y login, acceso por permiso (401/403), rol personalizado y refresh

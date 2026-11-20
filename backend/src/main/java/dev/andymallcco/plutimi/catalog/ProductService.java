@@ -2,14 +2,19 @@ package dev.andymallcco.plutimi.catalog;
 
 import dev.andymallcco.plutimi.catalog.dto.AdjustStockRequest;
 import dev.andymallcco.plutimi.catalog.dto.CreateProductRequest;
+import dev.andymallcco.plutimi.catalog.dto.ProductFilter;
 import dev.andymallcco.plutimi.catalog.dto.ProductResponse;
+import dev.andymallcco.plutimi.catalog.dto.ProductSummaryResponse;
 import dev.andymallcco.plutimi.catalog.dto.UpdateProductRequest;
 import dev.andymallcco.plutimi.shared.money.Money;
+import dev.andymallcco.plutimi.shared.web.PageResponse;
 import dev.andymallcco.plutimi.species.SpeciesService;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * Categorías y marcas son del mismo módulo, así que se usan sus repositorios directamente.
  * Las especies son de otro módulo: se validan a través de {@link SpeciesService}.
- * El listado con filtros llega con ProductSpecifications.
  */
 @Service
 @RequiredArgsConstructor
@@ -87,6 +91,12 @@ public class ProductService {
 
     public ProductResponse getById(Long id) {
         return productMapper.toResponse(findProduct(id));
+    }
+
+    /** Catálogo paginado: combina los filtros recibidos con ProductSpecifications. */
+    public PageResponse<ProductSummaryResponse> list(ProductFilter filter, Pageable pageable) {
+        Page<Product> products = productRepository.findAll(ProductSpecifications.from(filter), pageable);
+        return PageResponse.from(products.map(productMapper::toSummaryResponse));
     }
 
     /** Borrado lógico. Es idempotente. */
