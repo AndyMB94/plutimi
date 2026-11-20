@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 /**
  * Rol que agrupa permisos. Cada usuario tiene exactamente un rol.
@@ -54,7 +55,13 @@ public class Role extends AuditableEntity {
 
     // Permission es del mismo módulo: asociación JPA sobre la tabla de unión role_permissions.
     // LAZY por defecto en @ManyToMany: los permisos solo se cargan si se piden.
+    // @BatchSize evita el N+1 en el listado paginado: al tocar los permisos del primer rol,
+    // Hibernate carga los de hasta 50 roles de la página con un solo "WHERE role_id IN (...)",
+    // parecido a prefetch_related de Django.
+    // Un @EntityGraph no sirve ahí: un JOIN con una colección multiplica las filas y Hibernate
+    // tendría que paginar en memoria.
     @ManyToMany
+    @BatchSize(size = 50)
     @JoinTable(name = "role_permissions",
             joinColumns = @JoinColumn(name = "role_id"),
             inverseJoinColumns = @JoinColumn(name = "permission_id"))
