@@ -146,8 +146,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static List<FieldErrorDetail> toFieldErrors(Errors validationErrors) {
         List<FieldErrorDetail> errors = new ArrayList<>();
+        // isBindingFailure: el valor no se pudo convertir al tipo del campo (?minPrice=abc). El mensaje
+        // por defecto de Spring es técnico y en inglés, así que se sustituye por uno para el usuario.
         validationErrors.getFieldErrors().forEach(error ->
-                errors.add(new FieldErrorDetail(error.getField(), error.getDefaultMessage())));
+                errors.add(new FieldErrorDetail(error.getField(), error.isBindingFailure()
+                        ? "El valor '" + error.getRejectedValue() + "' no tiene un formato válido"
+                        : error.getDefaultMessage())));
         validationErrors.getGlobalErrors().forEach(error ->
                 errors.add(new FieldErrorDetail(error.getObjectName(), error.getDefaultMessage())));
         return errors;

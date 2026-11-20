@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Test unitario: el repositorio es un mock de Mockito, sin Spring ni base de datos.
@@ -34,11 +35,14 @@ class CategoryServiceTest {
     @Mock
     private CategoryRepository categoryRepository;
 
+    @Mock
+    private ProductRepository productRepository;
+
     private CategoryService categoryService;
 
     @BeforeEach
     void setUp() {
-        categoryService = new CategoryService(categoryRepository, new CategoryMapper());
+        categoryService = new CategoryService(categoryRepository, productRepository, new CategoryMapper());
     }
 
     // --- create ---
@@ -167,10 +171,61 @@ class CategoryServiceTest {
     }
 
     @Test
+    void deactivateRejectsCategoryWithActiveProducts() {
+        Category category = persistedCategory("Juguetes");
+        when(categoryRepository.findById(ID)).thenReturn(Optional.of(category));
+        when(productRepository.existsByCategoryIdAndActiveTrue(ID)).thenReturn(true);
+
+        assertThatThrownBy(() -> categoryService.deactivate(ID))
+                .isInstanceOf(CategoryHasActiveProductsException.class)
+                .hasMessageStartingWith("La categoría 'Juguetes' tiene productos activos");
+        assertThat(category.isActive()).isTrue();
+    }
+
+    @Test
+    void deactivatingAnInactiveCategoryDoesNotCheckProducts() {
+        Category category = persistedCategory("Juguetes");
+        category.deactivate();
+        when(categoryRepository.findById(ID)).thenReturn(Optional.of(category));
+
+        categoryService.deactivate(ID);
+
+        verify(productRepository, never()).existsByCategoryIdAndActiveTrue(any());
+    }
+
+    @Test
+    void updateWithActiveFalseRejectsCategoryWithActiveProductsWithoutModifyingIt() {
+        Category category = persistedCategory("Juguetes");
+        when(categoryRepository.findById(ID)).thenReturn(Optional.of(category));
+        when(productRepository.existsByCategoryIdAndActiveTrue(ID)).thenReturn(true);
+
+        assertThatThrownBy(() -> categoryService.update(ID, new UpdateCategoryRequest("Juguetes y más", null, false)))
+                .isInstanceOf(CategoryHasActiveProductsException.class);
+        assertThat(category.getName()).isEqualTo("Juguetes");
+        assertThat(category.isActive()).isTrue();
+    }
+
+    @Test
+    void updateKeepingCategoryActiveDoesNotCheckProducts() {
+        when(categoryRepository.findById(ID)).thenReturn(Optional.of(persistedCategory("Juguetes")));
+
+        categoryService.update(ID, new UpdateCategoryRequest("Juguetes", null, true));
+
+        verify(productRepository, never()).existsByCategoryIdAndActiveTrue(any());
+    }
+
+    @Test
     void deactivateThrowsNotFoundForUnknownId() {
         when(categoryRepository.findById(ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> categoryService.deactivate(ID)).isInstanceOf(CategoryNotFoundException.class);
+    }
+
+    /** Simula una categoría ya persistida: el id lo asigna la base de datos. */
+    private static Category persistedCategory(String name) {
+        Category category = new Category(name, null);
+        ReflectionTestUtils.setField(category, "id", ID);
+        return category;
     }
 
 }

@@ -179,10 +179,10 @@ garantiza que la raza pertenece a la especie.
 | `brand_id` | FK → `brands` | Opcional (productos sin marca). `@ManyToOne` |
 | `sku` | `VARCHAR(50)` | Único, código interno del producto |
 | `name` | `VARCHAR(150)` | |
-| `slug` | `VARCHAR(170)` | Único |
+| `slug` | `VARCHAR(210)` | Único. Se deriva de nombre + SKU (`adulto-15-kg-rc-ad-15`): varios productos de marcas distintas pueden llamarse igual. 210 = 150 del nombre + 1 + 50 del SKU |
 | `description` | `TEXT` | |
 | `price_amount` | `NUMERIC(12,2)` | `Money` (`@Embeddable`), `CHECK > 0` |
-| `price_currency` | `CHAR(3)` | `PEN` |
+| `price_currency` | `VARCHAR(3)` | `PEN` |
 | `stock` | `INTEGER` | `CHECK >= 0` |
 | `image_url` | `VARCHAR(500)` | URL externa por ahora (subida de imágenes en la fase 4) |
 | `active` | `BOOLEAN` | *Soft delete* |
@@ -219,7 +219,7 @@ precio se congela al crear el pedido.
 |---|---|---|
 | `user_id` | FK → `users` | Solo el ID |
 | `status` | `VARCHAR(20)` | Enum: `PENDING_PAYMENT` \| `PAID` \| `SHIPPED` \| `DELIVERED` \| `CANCELLED` |
-| `total_amount`, `currency` | `NUMERIC(12,2)`, `CHAR(3)` | `Money` |
+| `total_amount`, `currency` | `NUMERIC(12,2)`, `VARCHAR(3)` | `Money` |
 | `shipping_recipient`, `shipping_phone`, `shipping_street`, `shipping_district`, `shipping_city`, `shipping_reference` | `VARCHAR` | `Address` (`@Embeddable`), copia **intencionada** de la dirección en el momento de la compra |
 | `paid_at`, `shipped_at`, `delivered_at`, `cancelled_at` | `TIMESTAMPTZ` | Trazabilidad de estados |
 | `version` | `BIGINT` | |
@@ -241,7 +241,7 @@ precio se congela al crear el pedido.
 | `order_id` | FK → `orders` | Un pedido puede tener varios intentos |
 | `provider` | `VARCHAR(20)` | Enum: `CULQI` \| `FAKE` (cada valor es una Strategy) |
 | `provider_charge_id` | `VARCHAR(100)` | ID del cargo en Culqi |
-| `amount`, `currency` | `NUMERIC(12,2)`, `CHAR(3)` | |
+| `amount`, `currency` | `NUMERIC(12,2)`, `VARCHAR(3)` | |
 | `status` | `VARCHAR(20)` | `SUCCEEDED` \| `FAILED` |
 | `failure_reason` | `VARCHAR(255)` | Mensaje del proveedor si falló |
 
@@ -347,7 +347,7 @@ de disponibilidad están en [ARCHITECTURE.md §7](ARCHITECTURE.md#7-base-de-dato
 | `OrderStatus`, `AppointmentStatus` | Cada valor tiene comportamiento (transiciones del patrón State) |
 | `PaymentProvider` | Cada valor corresponde a una clase Strategy |
 | `PetSex`, `PaymentStatus`, `NotificationType` | Valores fijos, sin gestión por el admin |
-| Moneda (`CHAR(3)`) | Estándar ISO 4217 |
+| Moneda (`VARCHAR(3)`) | Estándar ISO 4217 |
 
 ---
 
@@ -498,14 +498,15 @@ Leyenda de acceso: 🌐 público · 👤 autenticado (con control de propiedad e
 | PUT | `/api/v1/categories/{id}` | `catalog:manage` | Actualizar |
 | DELETE | `/api/v1/categories/{id}` | `catalog:manage` | Desactivar → 204 (409 si tiene productos activos) |
 | GET | `/api/v1/brands` | 🌐 | Listar marcas activas |
+| GET | `/api/v1/brands/{id}` | 🌐 | Detalle (destino del `Location` al crear) |
 | POST | `/api/v1/brands` | `catalog:manage` | Crear → 201 |
 | PUT | `/api/v1/brands/{id}` | `catalog:manage` | Actualizar |
-| DELETE | `/api/v1/brands/{id}` | `catalog:manage` | Desactivar → 204 |
-| GET | `/api/v1/products` | 🌐 | Catálogo con filtros: `categoryId`, `brandId`, `speciesId`, `q`, `minPrice`, `maxPrice`, `inStock` |
+| DELETE | `/api/v1/brands/{id}` | `catalog:manage` | Desactivar → 204 (se permite aunque tenga productos activos: la marca es opcional) |
+| GET | `/api/v1/products` | 🌐 | Catálogo con filtros: `categoryId`, `brandId`, `speciesId`, `q`, `minPrice`, `maxPrice`, `inStock` e `includeInactive` (en la 1.7, solo con `catalog:manage`). Orden por defecto `name`; también `price.amount` y `createdAt` |
 | GET | `/api/v1/products/{id}` | 🌐 | Detalle, con marca y especies |
 | POST | `/api/v1/products` | `catalog:manage` | Crear (incluye `speciesIds`) → 201 |
 | PUT | `/api/v1/products/{id}` | `catalog:manage` | Actualizar |
-| PATCH | `/api/v1/products/{id}/stock` | `catalog:manage` | Ajustar stock |
+| PATCH | `/api/v1/products/{id}/stock` | `catalog:manage` | Ajustar stock con una variación (`{ "delta": -3 }`); 422 si quedaría negativo |
 | DELETE | `/api/v1/products/{id}` | `catalog:manage` | Desactivar → 204 |
 
 ### `cart`
@@ -631,16 +632,16 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 
 **1.5 Marcas y productos**
 
-- [ ] `V4__create_brands_table.sql`; entidad `Brand`, service, controller y tests
-- [ ] `V5__create_products_tables.sql` (`products` + `product_species`)
-- [ ] Entidad `Product` con `Money`, `Set<Long> speciesIds` (`@ElementCollection`) y métodos `decreaseStock`, `increaseStock`, `changePrice`, `changeSpecies` y `deactivate`
-- [ ] `ProductRepository` + `JpaSpecificationExecutor`
-- [ ] DTOs, `ProductMapper` y `ProductService` (CRUD, ajuste de stock y validación de las especies con `SpeciesService`)
-- [ ] Desactivar una categoría con productos activos → 409 (`CategoryHasActiveProductsException`), comprobado en `CategoryService.deactivate` y al desactivar con `PUT active=false`
-- [ ] `ProductSpecifications` + `ProductFilter`: categoría, marca, especie, texto, rango de precio y stock
-- [ ] `ProductController` (GET público; la escritura se protege en la 1.7)
-- [ ] `db/demo/R__demo_01_catalog.sql` (marcas, categorías y productos) y ubicación `db/demo` en `application-dev.properties`
-- [ ] Tests: reglas de `Product`, Specifications con Testcontainers y controller
+- [x] `V4__create_brands_table.sql`; entidad `Brand`, service, controller y tests
+- [x] `V5__create_products_tables.sql` (`products` + `product_species`)
+- [x] Entidad `Product` con `Money`, `Set<Long> speciesIds` (`@ElementCollection`) y métodos `decreaseStock`, `increaseStock`, `adjustStock`, `changePrice`, `changeSpecies` y `deactivate`
+- [x] `ProductRepository` + `JpaSpecificationExecutor`
+- [x] DTOs, `ProductMapper` y `ProductService` (CRUD, ajuste de stock y validación de las especies con `SpeciesService.assertActiveSpecies`). Reglas: la categoría debe estar activa si cambia o si el producto queda activo (422); la marca solo si cambia (422); solo se validan las especies añadidas. El PUT no toca el stock. El listado llega con los filtros
+- [x] Desactivar una categoría con productos activos → 409 (`CategoryHasActiveProductsException`), comprobado en `CategoryService.deactivate` y al desactivar con `PUT active=false`
+- [x] `ProductSpecifications` + `ProductFilter`: categoría, marca, especie, texto, rango de precio y stock. El listado devuelve `ProductSummaryResponse` y carga la marca con `@EntityGraph` (sin N+1)
+- [x] `ProductController` (GET público; la escritura se protege en la 1.7)
+- [x] `db/demo/R__demo_01_catalog.sql` (marcas, categorías y productos) y ubicación `db/demo` en `application-dev.properties`
+- [x] Tests: reglas de `Product`, Specifications con Testcontainers y controller
 
 **1.6 Usuarios, roles y permisos (RBAC)**
 
@@ -671,6 +672,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [ ] `POST /auth/refresh` con rotación, detección de reutilización y permisos releídos de la base de datos
 - [ ] `POST /auth/logout`
 - [ ] `@PreAuthorize("hasAuthority(...)")` en los endpoints de catálogo, especies, usuarios y roles
+- [ ] `includeInactive=true` en los listados públicos (productos, categorías, marcas, especies) solo con el permiso de gestión correspondiente; sin él, se ignora o devuelve 403
 - [ ] Endpoints `/users/me` (perfil, permisos y cambio de contraseña)
 - [ ] Swagger: botón *Authorize* con *bearer token*
 - [ ] Tests: registro y login, acceso por permiso (401/403), rol personalizado y refresh
@@ -679,6 +681,10 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 
 - [ ] Recorrer todo el flujo en Swagger con los usuarios demo: login como admin → crear un producto → catálogo público filtrado por especie
 - [ ] README con instrucciones para levantar el proyecto y las credenciales demo
+- [ ] Swagger: documentar las respuestas de error (400, 404, 409, 422) de cada endpoint con `@ApiResponse` y el schema `ProblemDetail` (ahora aparecen como *Undocumented*). Actualizar la regla de ARCHITECTURE.md §8 «Documentación», que hoy dice que los errores no se declaran por método
+- [ ] `.gitattributes` en la raíz para normalizar los finales de línea a LF (`* text=auto eol=lf`; `mvnw.cmd` y demás `.cmd`/`.bat` con CRLF)
+- [ ] Configurar Mockito como agente Java en el `pom.xml` (`-javaagent` en `maven-surefire-plugin`) para eliminar el *warning* de carga dinámica de agentes de Java 21
+- [ ] Verificar si `spring.jpa.open-in-view` está desactivado (Spring Boot lo deja activado por defecto y avisa en el log) y documentar la decisión en ARCHITECTURE.md. Comprobado en la 1.5: `application.properties` ya tiene `spring.jpa.open-in-view=false`; falta documentarlo
 
 ### Fase 2 — Carrito, pedidos y pago
 

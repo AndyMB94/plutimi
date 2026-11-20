@@ -15,7 +15,7 @@ public record UpdateCategoryRequest(
         @Schema(description = "Nombre único (sin distinguir mayúsculas)", example = "Alimento para perros")
         @NotBlank(message = "El nombre es obligatorio")
         @Size(max = 100, message = "El nombre no puede superar los 100 caracteres")
-        @Pattern(regexp = CategoryValidation.NAME_HAS_LETTER_OR_DIGIT,
+        @Pattern(regexp = CatalogValidation.NAME_HAS_LETTER_OR_DIGIT,
                 message = "El nombre debe contener al menos una letra o un número")
         String name,
 

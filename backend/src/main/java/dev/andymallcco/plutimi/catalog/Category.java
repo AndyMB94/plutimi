@@ -7,7 +7,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -53,17 +52,8 @@ public class Category extends AuditableEntity {
         this.active = false;
     }
 
-    /**
-     * Nombre tal como se guardará: sin espacios al inicio o al final y con los espacios internos
-     * reducidos a uno. El service lo usa para comprobar la unicidad antes de modificar la entidad.
-     */
-    static String normalizeName(String name) {
-        Objects.requireNonNull(name, "name must not be null");
-        return name.strip().replaceAll("\\s+", " ");
-    }
-
     private void rename(String name) {
-        this.name = normalizeName(name);
+        this.name = CatalogNames.normalize(name);
         this.slug = Slugs.of(this.name);
     }
 

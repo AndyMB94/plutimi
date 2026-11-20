@@ -5,10 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.jayway.jsonpath.JsonPath;
 import dev.andymallcco.plutimi.TestcontainersConfiguration;
 import dev.andymallcco.plutimi.catalog.dto.CreateCategoryRequest;
+import dev.andymallcco.plutimi.catalog.dto.CreateProductRequest;
+import dev.andymallcco.plutimi.species.SpeciesService;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +22,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -47,8 +52,19 @@ class CategoryIntegrationTest {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private ProductService productService;
+
+    @Autowired
+    private SpeciesService speciesService;
+
     @BeforeEach
     void cleanDatabase() {
+        // Primero los productos: la FK fk_products_category impide borrar categorías con productos
+        productRepository.deleteAll();
         categoryRepository.deleteAll();
     }
 
@@ -221,6 +237,41 @@ class CategoryIntegrationTest {
                 .bodyJson().extractingPath("$.active").isEqualTo(false);
     }
 
+    // --- categorías con productos activos ---
+
+    @Test
+    void deleteCategoryWithActiveProductsReturns409() {
+        long id = createCategory("Alimento");
+        createProduct(id, "RC-AD-15");
+
+        assertThat(mvc.delete().uri(CATEGORIES + "/{id}", id))
+                .hasStatus(HttpStatus.CONFLICT)
+                .bodyJson().isLenientlyEqualTo("""
+                        { "detail": "La categoría 'Alimento' tiene productos activos: desactívalos o muévelos a otra categoría antes" }
+                        """);
+    }
+
+    @Test
+    void putWithActiveFalseOnCategoryWithActiveProductsReturns409() {
+        long id = createCategory("Alimento");
+        createProduct(id, "RC-AD-15");
+
+        assertThat(mvc.put().uri(CATEGORIES + "/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        { "name": "Alimento", "active": false }
+                        """))
+                .hasStatus(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void categoryCanBeDeactivatedOnceItsProductsAreInactive() {
+        long id = createCategory("Alimento");
+        productService.deactivate(createProduct(id, "RC-AD-15"));
+
+        assertThat(mvc.delete().uri(CATEGORIES + "/{id}", id)).hasStatus(HttpStatus.NO_CONTENT);
+    }
+
     // --- CORS ---
 
     @Test
@@ -246,6 +297,13 @@ class CategoryIntegrationTest {
 
     private long createCategory(String name) {
         return categoryService.create(new CreateCategoryRequest(name, null)).id();
+    }
+
+    private long createProduct(long categoryId, String sku) {
+        // V3 inserta las especies base en todos los entornos, también en test
+        long speciesId = speciesService.listSpecies(false, PageRequest.of(0, 1)).content().getFirst().id();
+        return productService.create(new CreateProductRequest(sku, "Producto " + sku, null, categoryId, null,
+                new BigDecimal("10.00"), 5, null, Set.of(speciesId))).id();
     }
 
     private static long idFrom(MvcTestResult result) throws Exception {
