@@ -680,7 +680,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 **1.8 Cierre de la fase 1**
 
 - [ ] Recorrer todo el flujo en Swagger con los usuarios demo: login como admin → crear un producto → catálogo público filtrado por especie
-- [ ] README con instrucciones para levantar el proyecto y las credenciales demo
+- [ ] README con instrucciones para levantar el proyecto, las credenciales demo y el comando `jshell` que regenera el hash BCrypt de `R__demo_02_users.sql`
 - [ ] Swagger: documentar las respuestas de error (400, 404, 409, 422) de cada endpoint con `@ApiResponse` y el schema `ProblemDetail` (ahora aparecen como *Undocumented*). Actualizar la regla de ARCHITECTURE.md §8 «Documentación», que hoy dice que los errores no se declaran por método
 - [ ] `.gitattributes` en la raíz para normalizar los finales de línea a LF (`* text=auto eol=lf`; `mvnw.cmd` y demás `.cmd`/`.bat` con CRLF)
 - [ ] Configurar Mockito como agente Java en el `pom.xml` (`-javaagent` en `maven-surefire-plugin`) para eliminar el *warning* de carga dinámica de agentes de Java 21
