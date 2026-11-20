@@ -635,8 +635,8 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] `V4__create_brands_table.sql`; entidad `Brand`, service, controller y tests
 - [x] `V5__create_products_tables.sql` (`products` + `product_species`)
 - [x] Entidad `Product` con `Money`, `Set<Long> speciesIds` (`@ElementCollection`) y métodos `decreaseStock`, `increaseStock`, `adjustStock`, `changePrice`, `changeSpecies` y `deactivate`
-- [ ] `ProductRepository` + `JpaSpecificationExecutor`
-- [ ] DTOs, `ProductMapper` y `ProductService` (CRUD, ajuste de stock y validación de las especies con `SpeciesService`)
+- [x] `ProductRepository` + `JpaSpecificationExecutor`
+- [x] DTOs, `ProductMapper` y `ProductService` (CRUD, ajuste de stock y validación de las especies con `SpeciesService.assertActiveSpecies`). Reglas: la categoría debe estar activa si cambia o si el producto queda activo (422); la marca solo si cambia (422); solo se validan las especies añadidas. El PUT no toca el stock. El listado llega con los filtros
 - [ ] Desactivar una categoría con productos activos → 409 (`CategoryHasActiveProductsException`), comprobado en `CategoryService.deactivate` y al desactivar con `PUT active=false`
 - [ ] `ProductSpecifications` + `ProductFilter`: categoría, marca, especie, texto, rango de precio y stock
 - [ ] `ProductController` (GET público; la escritura se protege en la 1.7)

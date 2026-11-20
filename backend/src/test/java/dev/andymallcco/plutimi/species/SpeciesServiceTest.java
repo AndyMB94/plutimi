@@ -19,6 +19,7 @@ import dev.andymallcco.plutimi.species.dto.UpdateBreedRequest;
 import dev.andymallcco.plutimi.species.dto.UpdateSpeciesRequest;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -289,6 +290,36 @@ class SpeciesServiceTest {
 
         assertThatThrownBy(() -> speciesService.assertBreedBelongsToSpecies(99L, DOG_ID))
                 .isInstanceOf(BreedNotFoundException.class);
+    }
+
+    // --- assertActiveSpecies ---
+
+    @Test
+    void assertActiveSpeciesAcceptsExistingActiveSpecies() {
+        Species cat = persistedSpecies(CAT_ID, "CAT", "Gato");
+        when(speciesRepository.findAllById(Set.of(DOG_ID, CAT_ID))).thenReturn(List.of(dog, cat));
+
+        assertThatCode(() -> speciesService.assertActiveSpecies(Set.of(DOG_ID, CAT_ID))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void assertActiveSpeciesThrowsNotFoundForTheLowestMissingId() {
+        when(speciesRepository.findAllById(Set.of(DOG_ID, 98L, 99L))).thenReturn(List.of(dog));
+
+        assertThatThrownBy(() -> speciesService.assertActiveSpecies(Set.of(DOG_ID, 98L, 99L)))
+                .isInstanceOf(SpeciesNotFoundException.class)
+                .hasMessageContaining("98");
+    }
+
+    @Test
+    void assertActiveSpeciesRejectsInactiveSpecies() {
+        Species cat = persistedSpecies(CAT_ID, "CAT", "Gato");
+        cat.deactivate();
+        when(speciesRepository.findAllById(Set.of(DOG_ID, CAT_ID))).thenReturn(List.of(dog, cat));
+
+        assertThatThrownBy(() -> speciesService.assertActiveSpecies(Set.of(DOG_ID, CAT_ID)))
+                .isInstanceOf(InactiveSpeciesException.class)
+                .hasMessage("La especie 'Gato' está desactivada");
     }
 
     // Simulan entidades ya persistidas: el id lo asigna la base de datos

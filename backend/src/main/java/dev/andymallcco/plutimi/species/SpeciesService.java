@@ -7,6 +7,11 @@ import dev.andymallcco.plutimi.species.dto.CreateSpeciesRequest;
 import dev.andymallcco.plutimi.species.dto.SpeciesResponse;
 import dev.andymallcco.plutimi.species.dto.UpdateBreedRequest;
 import dev.andymallcco.plutimi.species.dto.UpdateSpeciesRequest;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -160,6 +165,30 @@ public class SpeciesService {
         if (!breed.isActive()) {
             throw new InactiveBreedException(breed.getName());
         }
+    }
+
+    /**
+     * Para otros módulos (catálogo): comprueba que todas las especies existen y están activas.
+     * Una sola consulta para todo el conjunto.
+     *
+     * @throws SpeciesNotFoundException si alguna no existe (404); se informa la de menor id
+     * @throws InactiveSpeciesException si alguna está desactivada (422)
+     */
+    public void assertActiveSpecies(Collection<Long> speciesIds) {
+        Map<Long, Species> found = speciesRepository.findAllById(speciesIds).stream()
+                .collect(Collectors.toMap(Species::getId, Function.identity()));
+        speciesIds.stream()
+                .filter(id -> !found.containsKey(id))
+                .min(Comparator.naturalOrder())
+                .ifPresent(missingId -> {
+                    throw new SpeciesNotFoundException(missingId);
+                });
+        found.values().stream()
+                .filter(species -> !species.isActive())
+                .min(Comparator.comparing(Species::getId))
+                .ifPresent(inactive -> {
+                    throw new InactiveSpeciesException(inactive.getName());
+                });
     }
 
     private Species findSpecies(Long id) {
