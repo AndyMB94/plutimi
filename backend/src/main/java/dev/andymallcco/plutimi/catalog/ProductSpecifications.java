@@ -1,8 +1,8 @@
 package dev.andymallcco.plutimi.catalog;
 
 import dev.andymallcco.plutimi.catalog.dto.ProductFilter;
+import dev.andymallcco.plutimi.shared.text.LikePatterns;
 import java.math.BigDecimal;
-import java.util.Locale;
 import java.util.Set;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -15,8 +15,6 @@ import org.springframework.data.jpa.domain.Specification;
  * Los nombres ("category", "price"...) son los atributos Java de {@link Product}, no las columnas.
  */
 final class ProductSpecifications {
-
-    private static final char LIKE_ESCAPE = '\\';
 
     private ProductSpecifications() {
     }
@@ -73,10 +71,10 @@ final class ProductSpecifications {
 
     /** Equivale a {@code name ILIKE '%texto%' OR sku ILIKE '%texto%'}. */
     static Specification<Product> nameOrSkuContains(String text) {
-        String pattern = "%" + escapeLike(text.toLowerCase(Locale.ROOT)) + "%";
+        String pattern = LikePatterns.containing(text);
         return (root, query, cb) -> cb.or(
-                cb.like(cb.lower(root.get("name")), pattern, LIKE_ESCAPE),
-                cb.like(cb.lower(root.get("sku")), pattern, LIKE_ESCAPE));
+                cb.like(cb.lower(root.get("name")), pattern, LikePatterns.ESCAPE),
+                cb.like(cb.lower(root.get("sku")), pattern, LikePatterns.ESCAPE));
     }
 
     static Specification<Product> priceAtLeast(BigDecimal min) {
@@ -93,11 +91,6 @@ final class ProductSpecifications {
 
     static Specification<Product> outOfStock() {
         return (root, query, cb) -> cb.equal(root.get("stock"), 0);
-    }
-
-    /** Evita que un "%" o "_" escrito por el usuario actúe como comodín de LIKE. */
-    private static String escapeLike(String text) {
-        return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
 }
