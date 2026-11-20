@@ -20,4 +20,7 @@ interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificati
 
     boolean existsBySlugAndIdNot(String slug, Long id);
 
+    /** ¿Hay productos a la venta en la categoría? Usa el índice ix_products_category_id. */
+    boolean existsByCategoryIdAndActiveTrue(Long categoryId);
+
 }

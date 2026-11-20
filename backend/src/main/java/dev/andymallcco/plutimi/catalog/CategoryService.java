@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    // Mismo módulo: se consulta el repositorio de productos directamente
+    private final ProductRepository productRepository;
     private final CategoryMapper categoryMapper;
 
     @Transactional
@@ -39,6 +41,9 @@ public class CategoryService {
         // Comprobar ANTES de modificar la entidad: si estuviera modificada, la consulta provocaría
         // un auto-flush y el UPDATE chocaría con el índice único antes de nuestra validación.
         assertNameAndSlugAvailable(name, id);
+        if (!request.active()) {
+            assertCanBeDeactivated(category);
+        }
 
         category.update(name, request.description());
         if (request.active()) {
@@ -63,10 +68,26 @@ public class CategoryService {
         return PageResponse.from(categories.map(categoryMapper::toResponse));
     }
 
-    /** Borrado lógico. Es idempotente: desactivar una categoría ya inactiva no falla. */
+    /**
+     * Borrado lógico. Es idempotente: desactivar una categoría ya inactiva no falla.
+     *
+     * @throws CategoryHasActiveProductsException si tiene productos activos (409)
+     */
     @Transactional
     public void deactivate(Long id) {
-        findCategory(id).deactivate();
+        Category category = findCategory(id);
+        assertCanBeDeactivated(category);
+        category.deactivate();
+    }
+
+    /**
+     * Solo se comprueba al pasar de activa a inactiva: una categoría ya inactiva no puede tener
+     * productos activos, porque ProductService exige una categoría activa para activar un producto.
+     */
+    private void assertCanBeDeactivated(Category category) {
+        if (category.isActive() && productRepository.existsByCategoryIdAndActiveTrue(category.getId())) {
+            throw new CategoryHasActiveProductsException(category.getName());
+        }
     }
 
     private Category findCategory(Long id) {

@@ -40,8 +40,13 @@ class BrandIntegrationTest {
     @Autowired
     private BrandRepository brandRepository;
 
+    @Autowired
+    private ProductRepository productRepository;
+
     @BeforeEach
     void cleanDatabase() {
+        // Primero los productos: la FK fk_products_brand impide borrar marcas con productos
+        productRepository.deleteAll();
         brandRepository.deleteAll();
     }
 
