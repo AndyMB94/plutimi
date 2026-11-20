@@ -179,7 +179,7 @@ garantiza que la raza pertenece a la especie.
 | `brand_id` | FK → `brands` | Opcional (productos sin marca). `@ManyToOne` |
 | `sku` | `VARCHAR(50)` | Único, código interno del producto |
 | `name` | `VARCHAR(150)` | |
-| `slug` | `VARCHAR(170)` | Único |
+| `slug` | `VARCHAR(170)` | Único. Se deriva de nombre + SKU (`adulto-15-kg-dog-ad-15`): varios productos de marcas distintas pueden llamarse igual |
 | `description` | `TEXT` | |
 | `price_amount` | `NUMERIC(12,2)` | `Money` (`@Embeddable`), `CHECK > 0` |
 | `price_currency` | `CHAR(3)` | `PEN` |
@@ -498,14 +498,15 @@ Leyenda de acceso: 🌐 público · 👤 autenticado (con control de propiedad e
 | PUT | `/api/v1/categories/{id}` | `catalog:manage` | Actualizar |
 | DELETE | `/api/v1/categories/{id}` | `catalog:manage` | Desactivar → 204 (409 si tiene productos activos) |
 | GET | `/api/v1/brands` | 🌐 | Listar marcas activas |
+| GET | `/api/v1/brands/{id}` | 🌐 | Detalle (destino del `Location` al crear) |
 | POST | `/api/v1/brands` | `catalog:manage` | Crear → 201 |
 | PUT | `/api/v1/brands/{id}` | `catalog:manage` | Actualizar |
-| DELETE | `/api/v1/brands/{id}` | `catalog:manage` | Desactivar → 204 |
+| DELETE | `/api/v1/brands/{id}` | `catalog:manage` | Desactivar → 204 (se permite aunque tenga productos activos: la marca es opcional) |
 | GET | `/api/v1/products` | 🌐 | Catálogo con filtros: `categoryId`, `brandId`, `speciesId`, `q`, `minPrice`, `maxPrice`, `inStock` |
 | GET | `/api/v1/products/{id}` | 🌐 | Detalle, con marca y especies |
 | POST | `/api/v1/products` | `catalog:manage` | Crear (incluye `speciesIds`) → 201 |
 | PUT | `/api/v1/products/{id}` | `catalog:manage` | Actualizar |
-| PATCH | `/api/v1/products/{id}/stock` | `catalog:manage` | Ajustar stock |
+| PATCH | `/api/v1/products/{id}/stock` | `catalog:manage` | Ajustar stock con una variación (`{ "delta": -3 }`); 422 si quedaría negativo |
 | DELETE | `/api/v1/products/{id}` | `catalog:manage` | Desactivar → 204 |
 
 ### `cart`
@@ -631,7 +632,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 
 **1.5 Marcas y productos**
 
-- [ ] `V4__create_brands_table.sql`; entidad `Brand`, service, controller y tests
+- [x] `V4__create_brands_table.sql`; entidad `Brand`, service, controller y tests
 - [ ] `V5__create_products_tables.sql` (`products` + `product_species`)
 - [ ] Entidad `Product` con `Money`, `Set<Long> speciesIds` (`@ElementCollection`) y métodos `decreaseStock`, `increaseStock`, `changePrice`, `changeSpecies` y `deactivate`
 - [ ] `ProductRepository` + `JpaSpecificationExecutor`
@@ -679,6 +680,10 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 
 - [ ] Recorrer todo el flujo en Swagger con los usuarios demo: login como admin → crear un producto → catálogo público filtrado por especie
 - [ ] README con instrucciones para levantar el proyecto y las credenciales demo
+- [ ] Swagger: documentar las respuestas de error (400, 404, 409, 422) de cada endpoint con `@ApiResponse` y el schema `ProblemDetail` (ahora aparecen como *Undocumented*). Actualizar la regla de ARCHITECTURE.md §8 «Documentación», que hoy dice que los errores no se declaran por método
+- [ ] `.gitattributes` en la raíz para normalizar los finales de línea a LF (`* text=auto eol=lf`; `mvnw.cmd` y demás `.cmd`/`.bat` con CRLF)
+- [ ] Configurar Mockito como agente Java en el `pom.xml` (`-javaagent` en `maven-surefire-plugin`) para eliminar el *warning* de carga dinámica de agentes de Java 21
+- [ ] Verificar si `spring.jpa.open-in-view` está desactivado (Spring Boot lo deja activado por defecto y avisa en el log) y documentar la decisión en ARCHITECTURE.md
 
 ### Fase 2 — Carrito, pedidos y pago
 
