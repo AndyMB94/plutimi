@@ -685,6 +685,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [ ] `.gitattributes` en la raíz para normalizar los finales de línea a LF (`* text=auto eol=lf`; `mvnw.cmd` y demás `.cmd`/`.bat` con CRLF)
 - [ ] Configurar Mockito como agente Java en el `pom.xml` (`-javaagent` en `maven-surefire-plugin`) para eliminar el *warning* de carga dinámica de agentes de Java 21
 - [ ] Verificar si `spring.jpa.open-in-view` está desactivado (Spring Boot lo deja activado por defecto y avisa en el log) y documentar la decisión en ARCHITECTURE.md. Comprobado en la 1.5: `application.properties` ya tiene `spring.jpa.open-in-view=false`; falta documentarlo
+- [ ] Un nombre en blanco devuelve dos errores de validación (`@NotBlank` y `@Pattern`); que el patrón acepte el blanco para dar uno solo (catálogo y especies)
 
 ### Fase 2 — Carrito, pedidos y pago
 
