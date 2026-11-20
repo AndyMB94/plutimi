@@ -647,11 +647,11 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 
 - [x] `V6__create_rbac_tables.sql` (`roles`, `permissions`, `role_permissions` con PK compuesta)
 - [x] `V7__insert_roles_and_permissions.sql`: roles base y permisos de la fase 1 con su asignación
-- [ ] `V8__create_users_table.sql` con `role_id`
-- [ ] Entidades `Role` (`@ManyToMany` con `Permission`), `Permission` y `User` (`@ManyToOne` con `Role`)
-- [ ] `UserService`: perfil propio, listado, cambio de rol y de estado
-- [ ] `RoleService`: CRUD de roles, reemplazo de permisos y protección de los roles de sistema. El rol `ADMIN` no puede perder `role:manage` ni `user:manage` (409 si se intenta), para que el sistema nunca quede sin nadie que gestione roles y usuarios
-- [ ] Controllers de usuarios, roles y permisos
+- [x] `V8__create_users_table.sql` con `role_id`
+- [x] Entidades `Role` (`@ManyToMany` con `Permission`), `Permission` y `User` (`@ManyToOne` con `Role`)
+- [x] `UserService`: perfil propio, listado, cambio de rol y de estado. No se puede quitar el rol `ADMIN` ni desactivar al último administrador activo (409). El cambio de rol y la desactivación publican `UserRoleChangedEvent` y `UserDisabledEvent`, que `auth` escuchará en la 1.7 para revocar los refresh tokens
+- [x] `RoleService`: CRUD de roles, reemplazo de permisos y protección de los roles de sistema. El rol `ADMIN` no puede perder `role:manage` ni `user:manage` (409 si se intenta), para que el sistema nunca quede sin nadie que gestione roles y usuarios. El `code` de un rol no cambia nunca; borrar un rol con usuarios → 409
+- [x] Controllers de usuarios, roles y permisos
 - [ ] `AdminInitializer` (`ApplicationRunner`): si no existe ningún usuario con rol `ADMIN`, lo crea con `ADMIN_EMAIL` y `ADMIN_PASSWORD` del entorno
 - [ ] `db/demo/R__demo_02_users.sql`: un usuario demo de cada rol
 - [ ] Tests

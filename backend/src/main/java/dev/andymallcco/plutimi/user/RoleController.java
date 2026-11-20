@@ -81,7 +81,7 @@ public class RoleController {
         return roleService.replacePermissions(id, request);
     }
 
-    @Operation(summary = "Borrar un rol", description = "Los roles de sistema (CUSTOMER, VET, ADMIN) no se pueden borrar.")
+    @Operation(summary = "Borrar un rol", description = "Los roles de sistema (CUSTOMER, VET, ADMIN) y los que tienen usuarios no se pueden borrar.")
     @ApiResponse(responseCode = "204", description = "Rol borrado")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

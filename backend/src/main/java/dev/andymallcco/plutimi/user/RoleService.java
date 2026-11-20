@@ -26,6 +26,7 @@ public class RoleService {
 
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
+    private final UserRepository userRepository;
     private final RoleMapper roleMapper;
 
     @Transactional
@@ -88,12 +89,16 @@ public class RoleService {
      * Borrado físico: un rol no tiene historial que conservar. Sus asignaciones de permisos se
      * borran en cascada (ON DELETE CASCADE en role_permissions).
      *
-     * @throws SystemRoleException si es un rol de sistema (409)
+     * @throws SystemRoleException   si es un rol de sistema (409)
+     * @throws RoleHasUsersException si algún usuario tiene este rol (409)
      */
     @Transactional
     public void delete(Long id) {
         Role role = findRole(id);
         role.assertDeletable();
+        if (userRepository.existsByRoleId(id)) {
+            throw new RoleHasUsersException(role.getCode());
+        }
         roleRepository.delete(role);
     }
 
