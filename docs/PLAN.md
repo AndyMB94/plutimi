@@ -179,10 +179,10 @@ garantiza que la raza pertenece a la especie.
 | `brand_id` | FK → `brands` | Opcional (productos sin marca). `@ManyToOne` |
 | `sku` | `VARCHAR(50)` | Único, código interno del producto |
 | `name` | `VARCHAR(150)` | |
-| `slug` | `VARCHAR(170)` | Único. Se deriva de nombre + SKU (`adulto-15-kg-dog-ad-15`): varios productos de marcas distintas pueden llamarse igual |
+| `slug` | `VARCHAR(210)` | Único. Se deriva de nombre + SKU (`adulto-15-kg-rc-ad-15`): varios productos de marcas distintas pueden llamarse igual. 210 = 150 del nombre + 1 + 50 del SKU |
 | `description` | `TEXT` | |
 | `price_amount` | `NUMERIC(12,2)` | `Money` (`@Embeddable`), `CHECK > 0` |
-| `price_currency` | `CHAR(3)` | `PEN` |
+| `price_currency` | `VARCHAR(3)` | `PEN` |
 | `stock` | `INTEGER` | `CHECK >= 0` |
 | `image_url` | `VARCHAR(500)` | URL externa por ahora (subida de imágenes en la fase 4) |
 | `active` | `BOOLEAN` | *Soft delete* |
@@ -219,7 +219,7 @@ precio se congela al crear el pedido.
 |---|---|---|
 | `user_id` | FK → `users` | Solo el ID |
 | `status` | `VARCHAR(20)` | Enum: `PENDING_PAYMENT` \| `PAID` \| `SHIPPED` \| `DELIVERED` \| `CANCELLED` |
-| `total_amount`, `currency` | `NUMERIC(12,2)`, `CHAR(3)` | `Money` |
+| `total_amount`, `currency` | `NUMERIC(12,2)`, `VARCHAR(3)` | `Money` |
 | `shipping_recipient`, `shipping_phone`, `shipping_street`, `shipping_district`, `shipping_city`, `shipping_reference` | `VARCHAR` | `Address` (`@Embeddable`), copia **intencionada** de la dirección en el momento de la compra |
 | `paid_at`, `shipped_at`, `delivered_at`, `cancelled_at` | `TIMESTAMPTZ` | Trazabilidad de estados |
 | `version` | `BIGINT` | |
@@ -241,7 +241,7 @@ precio se congela al crear el pedido.
 | `order_id` | FK → `orders` | Un pedido puede tener varios intentos |
 | `provider` | `VARCHAR(20)` | Enum: `CULQI` \| `FAKE` (cada valor es una Strategy) |
 | `provider_charge_id` | `VARCHAR(100)` | ID del cargo en Culqi |
-| `amount`, `currency` | `NUMERIC(12,2)`, `CHAR(3)` | |
+| `amount`, `currency` | `NUMERIC(12,2)`, `VARCHAR(3)` | |
 | `status` | `VARCHAR(20)` | `SUCCEEDED` \| `FAILED` |
 | `failure_reason` | `VARCHAR(255)` | Mensaje del proveedor si falló |
 
@@ -347,7 +347,7 @@ de disponibilidad están en [ARCHITECTURE.md §7](ARCHITECTURE.md#7-base-de-dato
 | `OrderStatus`, `AppointmentStatus` | Cada valor tiene comportamiento (transiciones del patrón State) |
 | `PaymentProvider` | Cada valor corresponde a una clase Strategy |
 | `PetSex`, `PaymentStatus`, `NotificationType` | Valores fijos, sin gestión por el admin |
-| Moneda (`CHAR(3)`) | Estándar ISO 4217 |
+| Moneda (`VARCHAR(3)`) | Estándar ISO 4217 |
 
 ---
 
@@ -633,8 +633,8 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 **1.5 Marcas y productos**
 
 - [x] `V4__create_brands_table.sql`; entidad `Brand`, service, controller y tests
-- [ ] `V5__create_products_tables.sql` (`products` + `product_species`)
-- [ ] Entidad `Product` con `Money`, `Set<Long> speciesIds` (`@ElementCollection`) y métodos `decreaseStock`, `increaseStock`, `changePrice`, `changeSpecies` y `deactivate`
+- [x] `V5__create_products_tables.sql` (`products` + `product_species`)
+- [x] Entidad `Product` con `Money`, `Set<Long> speciesIds` (`@ElementCollection`) y métodos `decreaseStock`, `increaseStock`, `adjustStock`, `changePrice`, `changeSpecies` y `deactivate`
 - [ ] `ProductRepository` + `JpaSpecificationExecutor`
 - [ ] DTOs, `ProductMapper` y `ProductService` (CRUD, ajuste de stock y validación de las especies con `SpeciesService`)
 - [ ] Desactivar una categoría con productos activos → 409 (`CategoryHasActiveProductsException`), comprobado en `CategoryService.deactivate` y al desactivar con `PUT active=false`

@@ -372,7 +372,7 @@ Decisiones de modelado:
 | Claves primarias | `BIGINT GENERATED ALWAYS AS IDENTITY` ↔ `Long` + `GenerationType.IDENTITY` | Simple, legible y nativo de PostgreSQL. |
 | Fechas y horas | `TIMESTAMPTZ` ↔ `Instant`; `DATE` ↔ `LocalDate` | Siempre en UTC, sin ambigüedad de zona horaria. |
 | Dinero | `NUMERIC(12,2)` ↔ `BigDecimal`, envuelto en `Money` | Nunca `double`: los decimales binarios no representan exactamente 0.10. |
-| Moneda | Columna `CHAR(3)` (ISO 4217); por ahora siempre `PEN` | El Value Object queda completo y no habrá que migrar si se añade otra moneda. |
+| Moneda | Columna `VARCHAR(3)` con `CHECK (... ~ '^[A-Z]{3}$')` (ISO 4217); por ahora siempre `PEN`. No `CHAR(3)`: Hibernate mapea `Currency` a `VARCHAR` y `ddl-auto=validate` rechazaría la columna | El Value Object queda completo y no habrá que migrar si se añade otra moneda. |
 | Enums | `VARCHAR` + `CHECK` ↔ `@Enumerated(EnumType.STRING)` | Legibles en la base de datos; reordenar el enum no corrompe datos (`ORDINAL` sí). |
 | Auditoría | `created_at` / `updated_at` mediante `AuditableEntity` (`@MappedSuperclass`) y JPA Auditing. En SQL: `TIMESTAMPTZ NOT NULL DEFAULT now()` | Evita repetir esos campos en cada entidad. El `DEFAULT` cubre los `INSERT` que no pasan por JPA (seeders). |
 | Concurrencia | `@Version` (columna `version`) en `Product`, `Order` y `Appointment`; restricción de exclusión en `appointments` | Bloqueo optimista: dos compras simultáneas del último producto no pueden dejar el stock negativo. La exclusión impide citas solapadas (ver más abajo). |
