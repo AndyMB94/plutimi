@@ -640,7 +640,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] Desactivar una categoría con productos activos → 409 (`CategoryHasActiveProductsException`), comprobado en `CategoryService.deactivate` y al desactivar con `PUT active=false`
 - [x] `ProductSpecifications` + `ProductFilter`: categoría, marca, especie, texto, rango de precio y stock. El listado devuelve `ProductSummaryResponse` y carga la marca con `@EntityGraph` (sin N+1)
 - [x] `ProductController` (GET público; la escritura se protege en la 1.7)
-- [ ] `db/demo/R__demo_01_catalog.sql` (marcas, categorías y productos) y ubicación `db/demo` en `application-dev.properties`
+- [x] `db/demo/R__demo_01_catalog.sql` (marcas, categorías y productos) y ubicación `db/demo` en `application-dev.properties`
 - [x] Tests: reglas de `Product`, Specifications con Testcontainers y controller
 
 **1.6 Usuarios, roles y permisos (RBAC)**
@@ -684,7 +684,7 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [ ] Swagger: documentar las respuestas de error (400, 404, 409, 422) de cada endpoint con `@ApiResponse` y el schema `ProblemDetail` (ahora aparecen como *Undocumented*). Actualizar la regla de ARCHITECTURE.md §8 «Documentación», que hoy dice que los errores no se declaran por método
 - [ ] `.gitattributes` en la raíz para normalizar los finales de línea a LF (`* text=auto eol=lf`; `mvnw.cmd` y demás `.cmd`/`.bat` con CRLF)
 - [ ] Configurar Mockito como agente Java en el `pom.xml` (`-javaagent` en `maven-surefire-plugin`) para eliminar el *warning* de carga dinámica de agentes de Java 21
-- [ ] Verificar si `spring.jpa.open-in-view` está desactivado (Spring Boot lo deja activado por defecto y avisa en el log) y documentar la decisión en ARCHITECTURE.md
+- [ ] Verificar si `spring.jpa.open-in-view` está desactivado (Spring Boot lo deja activado por defecto y avisa en el log) y documentar la decisión en ARCHITECTURE.md. Comprobado en la 1.5: `application.properties` ya tiene `spring.jpa.open-in-view=false`; falta documentarlo
 
 ### Fase 2 — Carrito, pedidos y pago
 
