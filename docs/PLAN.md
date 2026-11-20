@@ -380,9 +380,11 @@ filtra por propietario ("mis pedidos") o muestra todo.
 | `appointment:manage` | Confirmar, completar, marcar inasistencia o cancelar cualquier cita | | ✓ | ✓ | 3 |
 | `appointment-type:manage` | CRUD de tipos de cita | | | ✓ | 3 |
 
-Solo hay **dos lugares** donde el código usa un código de rol: el registro asigna
-`CUSTOMER` y `GET /vets` lista los usuarios con rol `VET`. Todo lo demás depende de
-permisos, así que el admin puede crear roles nuevos (por ejemplo `STOCK_MANAGER` solo con
+Los endpoints nunca comprueban un código de rol. El código solo los usa para asignar o
+proteger roles: el registro asigna `CUSTOMER`, `GET /vets` lista los usuarios con rol `VET`,
+y `ADMIN` aparece en `AdminInitializer` y en las reglas que impiden quedarse sin
+administración (no perder `role:manage` ni `user:manage`, no quitar al último admin
+activo). Todo lo demás depende de permisos, así que el admin puede crear roles nuevos (por ejemplo `STOCK_MANAGER` solo con
 `catalog:manage`) sin cambiar código.
 
 ---
@@ -463,12 +465,12 @@ Leyenda de acceso: 🌐 público · 👤 autenticado (con control de propiedad e
 | PUT | `/api/v1/users/me/password` | 👤 | Cambiar contraseña (revoca los refresh tokens) → 204 |
 | GET | `/api/v1/users` | `user:read` | Listar usuarios (`?roleId=`, `?q=`) |
 | GET | `/api/v1/users/{id}` | `user:read` | Detalle |
-| PATCH | `/api/v1/users/{id}/role` | `user:manage` | Cambiar rol (`{ "roleId": 2 }`); revoca sus refresh tokens |
-| PATCH | `/api/v1/users/{id}/status` | `user:manage` | Activar o desactivar; revoca sus refresh tokens |
+| PATCH | `/api/v1/users/{id}/role` | `user:manage` | Cambiar rol (`{ "roleId": 2 }`); revoca sus refresh tokens. 409 si es el último admin activo |
+| PATCH | `/api/v1/users/{id}/status` | `user:manage` | Activar o desactivar; revoca sus refresh tokens. 409 si es el último admin activo |
 | GET | `/api/v1/roles` | `role:manage` | Roles con sus permisos |
 | GET | `/api/v1/roles/{id}` | `role:manage` | Detalle |
 | POST | `/api/v1/roles` | `role:manage` | Crear rol → 201 |
-| PUT | `/api/v1/roles/{id}` | `role:manage` | Cambiar nombre y descripción (el `code` de un rol de sistema no cambia) |
+| PUT | `/api/v1/roles/{id}` | `role:manage` | Cambiar nombre y descripción (el `code` de un rol no cambia nunca) |
 | PUT | `/api/v1/roles/{id}/permissions` | `role:manage` | Reemplazar el conjunto de permisos (`{ "permissionIds": [...] }`) |
 | DELETE | `/api/v1/roles/{id}` | `role:manage` | Borrar → 204 (409 si es de sistema o tiene usuarios) |
 | GET | `/api/v1/permissions` | `role:manage` | Catálogo de permisos (solo lectura) |
@@ -653,8 +655,8 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 - [x] `RoleService`: CRUD de roles, reemplazo de permisos y protección de los roles de sistema. El rol `ADMIN` no puede perder `role:manage` ni `user:manage` (409 si se intenta), para que el sistema nunca quede sin nadie que gestione roles y usuarios. El `code` de un rol no cambia nunca; borrar un rol con usuarios → 409
 - [x] Controllers de usuarios, roles y permisos
 - [x] `AdminInitializer` (`ApplicationRunner`): si no existe ningún usuario con rol `ADMIN`, lo crea con `ADMIN_EMAIL` y `ADMIN_PASSWORD` del entorno (mínimo 12 caracteres). En `prod` (`plutimi.admin.required=true`) no arranca si faltan; en `dev` y `test` solo avisa. BCrypt con `spring-security-crypto` (sin el starter de seguridad, que llega en la 1.7)
-- [ ] `db/demo/R__demo_02_users.sql`: un usuario demo de cada rol
-- [ ] Tests
+- [x] `db/demo/R__demo_02_users.sql`: un usuario demo de cada rol
+- [x] Tests: reglas de `Role` y `User`, `RoleService` y `UserService` con Mockito, validación de `CreateRoleRequest`, e integración con Testcontainers de roles, usuarios (filtros, último admin, eventos con `@RecordApplicationEvents`) y `AdminInitializer`
 
 **1.7 Autenticación y seguridad**
 
