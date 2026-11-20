@@ -645,8 +645,8 @@ cobertura, CI y despliegue. Cada sección se trabaja en su propia rama
 
 **1.6 Usuarios, roles y permisos (RBAC)**
 
-- [ ] `V6__create_rbac_tables.sql` (`roles`, `permissions`, `role_permissions` con PK compuesta)
-- [ ] `V7__insert_roles_and_permissions.sql`: roles base y permisos de la fase 1 con su asignación
+- [x] `V6__create_rbac_tables.sql` (`roles`, `permissions`, `role_permissions` con PK compuesta)
+- [x] `V7__insert_roles_and_permissions.sql`: roles base y permisos de la fase 1 con su asignación
 - [ ] `V8__create_users_table.sql` con `role_id`
 - [ ] Entidades `Role` (`@ManyToMany` con `Permission`), `Permission` y `User` (`@ManyToOne` con `Role`)
 - [ ] `UserService`: perfil propio, listado, cambio de rol y de estado
